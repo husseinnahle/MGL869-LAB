@@ -35,8 +35,10 @@ def extract_commits(page: int = 1, per_page: int = 100) -> list[dict]:
     """
     try:
         response = requests.get(f"{GITHUB_URL}/{OWNER}/{REPO}/commits?per_page={per_page}&page={page}", headers=HEADERS)
+        response.raise_for_status()
         return [e["sha"] for e in json.loads(response.text)]
-    except (requests.exceptions.RequestException, json.JSONDecodeError):
+    except (requests.exceptions.RequestException, json.JSONDecodeError) as e:
+        print(f"An error occurred while fetching commits:\n\n\t\t{e}\n")
         return {}
 
 
@@ -92,8 +94,9 @@ while commit_hashes:
     commit_hashes = extract_commits(page, per_page)
 
 # Save commits content
-with open(OUTPUT_FILE, "w") as file:
-	json.dump(commits, file, indent=4)
+if commits:
+    with open(OUTPUT_FILE, "w") as file:
+        json.dump(commits, file, indent=4)
 
 stop_event.set()
 scheduler_thread.join()
