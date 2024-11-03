@@ -16,7 +16,7 @@ HEADERS = {
 }
 
 
-def _extract_commits(page: int = 1, per_page: int = 100) -> list[dict]:
+def extract_commits(page: int = 1, per_page: int = 100) -> list[dict]:
     """Extract a list of commits.
 
     Args:
@@ -37,7 +37,7 @@ def _extract_commits(page: int = 1, per_page: int = 100) -> list[dict]:
         return []
 
 
-def _extract_commit_content(hash: str) -> list[str]:
+def extract_commit_content(hash: str) -> list[str]:
     """Extract the content of a single commit.
 
     Args:
@@ -49,66 +49,34 @@ def _extract_commit_content(hash: str) -> list[str]:
     try:
         response = requests.get(f"{GITHUB_URL}/{OWNER}/{REPO}/commits/" + hash, headers=HEADERS)
         commit = json.loads(response.text)
-    except (requests.exceptions.RequestException, json.JSONDecodeError):
+    except (requests.exceptions.RequestException, json.JSONDecodeError) as e:
+        print(f"An error occurred while fetching commit {hash}:\n\n\t\t{e}\n")
         return []
     return [e["filename"] for e in commit["files"] \
             if (e["filename"].endswith(".java") or e["filename"].endswith(".cpp")) and e["status"] == "modified"]
 
 
-def extract_commits(issues: list[str]) -> list[dict]:
+def extract_tags(page: int = 1, per_page: int = 100) -> list[dict]:
+    """Extract GitHub tags.
 
-    def _print_commit_count():
-        print(f"\tFound {round(len(found)*100/len(issues), 2)}% commits.")
+    Args:
+        page (int, optional): The page number of the results to fetch. Defaults to 1.
+        per_page (int, optional): The number of results per page (max 100). Defaults to 100.
 
-    def _start_scheduler():
-        schedule.every(10).seconds.do(_print_commit_count)
-        while not stop_event.is_set():
-            schedule.run_pending()
-            time.sleep(1)
-
-    stop_event = threading.Event()
-    scheduler_thread = threading.Thread(target=_start_scheduler)
-    scheduler_thread.start()
-    found = {}
-    max_tries = 20
-    min_found = int(0.9 * len(issues))
-    try_count = 0
-    previous_found_count = 0
-    page = 1
-    per_page = 100
-    commits = _extract_commits(page=page, per_page=per_page)
-
-    while commits or len(found) != len(issues):
-
-        for commit in commits:
-            message = commit["message"]
-            for ticket in issues:
-                if ticket in message:
-                    commit["files"] = _extract_commit_content(commit["sha"])
-                    found[ticket] = commit
-                    break
-
-        if len(found) == previous_found_count and len(found) > min_found:
-            try_count += 1
-            if try_count >= max_tries:
-                not_found = set(issues) - set(found.keys())
-                print(f"\tMax tries reached... {len(issues) - len(found)} ticket(s) not found: {','.join(not_found)}")
-                break
-
-        else:
-            try_count = 0
-            previous_found_count = len(found)
-
-        page += 1
-        commits = _extract_commits(page=page, per_page=100)
-
-    stop_event.set()
-    scheduler_thread.join()
+    Returns:
+        list[dict]: List of dictionnaries containning:
+            - tagName: Tag name.
+            - commitId: Commit hash.
+    """
+    try:
+        response = requests.get(f"{GITHUB_URL}/{OWNER}/{REPO}/tags?per_page={per_page}&page={page}", headers=HEADERS)
+    except (requests.exceptions.RequestException, json.JSONDecodeError) as e:
+        print(f"An error occurred while fetching tags:\n\n\t\t{e}\n")
+        return []
     return [
         {
-            "key": issue_key,
-            "commitId": commit["sha"],
-            "files": commit["files"]
+            "tagName": e["name"],
+            "commitId": e["commit"]["sha"]
         }
-        for issue_key, commit in found.items()
+        for e in json.loads(response.text)
     ]
