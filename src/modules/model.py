@@ -90,10 +90,18 @@ dataset_without_outliers = dataset
 for column in dataset_without_outliers.columns[2:-1]:
     q_hi = dataset_without_outliers[column].quantile(0.999)
     dataset_without_outliers = dataset_without_outliers[dataset_without_outliers[column] < q_hi]
-print(f"    Final number of rows in the dataset: {len(dataset_without_outliers)}")
+outliers = dataset[~(dataset["index"].isin(list(dataset_without_outliers["index"])))]
+# Save outliers data to file
+outliers.to_csv(base_dir / "outliers.csv")
+dataset = dataset_without_outliers
+print(f"    Final number of rows in the dataset: {len(dataset)}")
 print(
-    f"    Final number of .java files with bug in the dataset: {len(dataset_without_outliers.loc[dataset_without_outliers["Bugs"] == 1, "Bugs"])}")
+    f"    Final number of .java files with bug in the dataset: {len(dataset.loc[dataset["Bugs"] == 1, "Bugs"])}")
 print()
+
+# Reset dataframes indexes
+dataset = dataset.reset_index()
+outliers = outliers.reset_index()
 
 # Print variables range
 print("Variables range:")
@@ -106,13 +114,20 @@ dataset.to_csv(base_dir / "metrics_preprocessed.csv")
 
 # Drop "Name" column
 dataset = dataset.drop("Name", axis=1)
+outliers = outliers.drop("Name", axis=1)
 
 # Separate data from labels
 X = dataset.iloc[:, :-1]
 y = dataset.iloc[:, -1]
 X_train, X_test, y_train, y_test = train_test_split(
-    X, y, test_size=0.3, random_state=0
+    X, y, test_size=0.25, random_state=0
 )
+
+# Add outliers to test sets
+X_outliers = outliers.iloc[:, :-1]
+y_outliers = outliers.iloc[:, -1]
+X_test = pd.concat([X_test, X_outliers], axis=0)
+y_test = pd.concat([y_test, y_outliers], axis=0)
 
 # Generate Logistic Regression classifier
 # Optimize the hyperparameters choice with a grid search
@@ -123,9 +138,9 @@ X_train, X_test, y_train, y_test = train_test_split(
 # }
 # BEST PARAMETERS
 param_grid = {
-    "penalty": [None],
-    "solver": ['newton-cg'],
-    "max_iter": [100]
+    "penalty": ['l2'],
+    "solver": ['lbfgs'],
+    "max_iter": [300]
 }
 existing_model = True
 try:
@@ -165,10 +180,11 @@ plt.plot(lr_fpr, lr_tpr, color="blue", label=f"AUC = {lr_auc:.2f}")
 plt.plot([0, 1], [0, 1], color="gray", linestyle="--")
 plt.xlabel("False Positive Rate")
 plt.ylabel("True Positive Rate")
-plt.title("Linear Regression AUC Curve")
+plt.title("Logistic Regression AUC Curve")
 plt.legend(loc="lower right")
 plt.grid()
 plt.show()
+plt.savefig(base_dir / "logistic_regression_auc.png")
 
 # Print nomogram info (remove the index and Bugs columns)
 for i, column in enumerate(dataset.columns[1:-1], start=0):
@@ -177,11 +193,11 @@ for i, column in enumerate(dataset.columns[1:-1], start=0):
         print(f"threshold 0.5   ")
     else:
         print(
-            f"{column} {logistic_regression_clf.coef_[0][i]} {min(dataset_without_outliers[column])} {max(dataset_without_outliers[column])} continuous")
+            f"{column} {logistic_regression_clf.coef_[0][i]} {min(dataset[column])} {max(dataset[column])} continuous")
 print()
 
 # Print nomogram for Logistic Regression
-nomogram(str(base_dir / "nomogram_config.xlsx"), result_title="Positive Risk", fig_width=50, single_height=0.45,
+nomogram_fig = nomogram(str(base_dir / "nomogram_config.xlsx"), result_title="Positive Risk", fig_width=50, single_height=0.45,
          dpi=300,
          ax_para={"c": "black", "linewidth": 1.3, "linestyle": "-"},
          tick_para={"direction": 'in', "length": 3, "width": 1.5, },
@@ -189,6 +205,7 @@ nomogram(str(base_dir / "nomogram_config.xlsx"), result_title="Positive Risk", f
          ylabel_para={"fontsize": 12, "fontname": "Songti Sc", "labelpad": 100,
                       "loc": "center", "color": "black", "rotation": "horizontal"},
          total_point=100)
+nomogram_fig.savefig(base_dir / "nomogram.png")
 
 # Generate Random Forest classifier
 # Optimize the hyperparameters choice with a grid search
@@ -202,9 +219,9 @@ nomogram(str(base_dir / "nomogram_config.xlsx"), result_title="Positive Risk", f
 # }
 # BEST PARAMETERS
 param_grid = {
-    "n_estimators": [200],
+    "n_estimators": [100],
     "max_depth": [16],
-    "min_samples_split": [2],
+    "min_samples_split": [4],
     "min_samples_leaf": [1],
     "max_features": ["sqrt"],
     "random_state": [0],
@@ -250,3 +267,4 @@ plt.title("Random Forest AUC Curve")
 plt.legend(loc="lower right")
 plt.grid()
 plt.show()
+plt.savefig(base_dir / "random_forest_auc.png")
