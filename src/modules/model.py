@@ -21,7 +21,7 @@ dataset = pd.read_csv(metrics_path)
 dataset = dataset.query('Kind == "File"').drop("Kind", axis=1)
 
 # Reset dataframe index
-dataset = dataset.reset_index()
+dataset = dataset.reset_index(drop=True)
 
 # Read the files with bugs json
 with open(base_dir / "files_with_bugs.json", "r") as f:
@@ -42,13 +42,13 @@ for file in java_files:
 print()
 
 # Display initial variable columns
-initial_columns = list(dataset.columns[2:-1])
+initial_columns = list(dataset.columns[1:-1])
 print(f"Initial variable columns: {len(initial_columns)}")
 print()
 
 # Drop columns with all NaN
 dataset = dataset.dropna(axis=1, how='all')
-remaining_columns = list(dataset.columns[2:-1])
+remaining_columns = list(dataset.columns[1:-1])
 print("Drop all NaN columns")
 print(f"Remaining columns ({len(remaining_columns)}):")
 for column in remaining_columns:
@@ -60,13 +60,13 @@ for column in dropped_columns:
 print()
 
 # Drop columns with all same value
-initial_columns = list(dataset.columns[2:-1])
+initial_columns = list(dataset.columns[1:-1])
 print("Drop same value columns")
 print(f"Initial columns: {len(initial_columns)}")
 number_unique = dataset.nunique()
 cols_to_drop = number_unique[number_unique == 1].index
 dataset = dataset.drop(cols_to_drop, axis=1)
-remaining_columns = list(dataset.columns[2:-1])
+remaining_columns = list(dataset.columns[1:-1])
 print(f"Remaining columns ({len(remaining_columns)}):")
 for column in remaining_columns:
     print(f"    {column}")
@@ -78,7 +78,7 @@ print()
 
 # Check for missing values
 print("Columns with missing values:")
-missing_values = dataset.isnull().sum()
+missing_values = dataset.iloc[:,1:-1].isnull().sum()
 print(missing_values)
 print()
 
@@ -87,10 +87,10 @@ print("Remove outliers:")
 print(f"    Initial number of rows in the dataset: {len(dataset)}")
 print(f"    Initial number of .java files with bug in the dataset: {len(dataset.loc[dataset["Bugs"] == 1, "Bugs"])}")
 dataset_without_outliers = dataset
-for column in dataset_without_outliers.columns[2:-1]:
+for column in dataset_without_outliers.columns[1:-1]:
     q_hi = dataset_without_outliers[column].quantile(0.999)
     dataset_without_outliers = dataset_without_outliers[dataset_without_outliers[column] < q_hi]
-outliers = dataset[~(dataset["index"].isin(list(dataset_without_outliers["index"])))]
+outliers = dataset[~(dataset.index.isin(list(dataset_without_outliers.index)))]
 # Save outliers data to file
 outliers.to_csv(base_dir / "outliers.csv")
 dataset = dataset_without_outliers
@@ -100,12 +100,12 @@ print(
 print()
 
 # Reset dataframes indexes
-dataset = dataset.reset_index()
-outliers = outliers.reset_index()
+dataset = dataset.reset_index(drop=True)
+outliers = outliers.reset_index(drop=True)
 
 # Print variables range
 print("Variables range:")
-for column in dataset.columns[2:-1]:
+for column in dataset.columns[1:-1]:
     print(f"    {column}: {min(dataset[column])} - {max(dataset[column])}")
 print()
 
@@ -140,7 +140,7 @@ y_test = pd.concat([y_test, y_outliers], axis=0)
 param_grid = {
     "penalty": ['l2'],
     "solver": ['lbfgs'],
-    "max_iter": [300]
+    "max_iter": [100]
 }
 existing_model = True
 try:
@@ -186,13 +186,10 @@ plt.grid()
 plt.savefig(base_dir / "logistic_regression_auc.png")
 
 # Print nomogram info (remove the index and Bugs columns)
-for i, column in enumerate(dataset.columns[1:-1], start=0):
-    if i == 0:
-        print(f"intercept {logistic_regression_clf.coef_[0][i]}   ")
-        print(f"threshold 0.5   ")
-    else:
-        print(
-            f"{column} {logistic_regression_clf.coef_[0][i]} {min(dataset[column])} {max(dataset[column])} continuous")
+print(f"intercept {logistic_regression_clf.coef_[0][-1]}   ")
+print(f"threshold 0.5   ")
+for i, column in enumerate(dataset.columns[:-1], start=0):
+    print(f"{column} {logistic_regression_clf.coef_[0][i]} {min(dataset[column])} {max(dataset[column])} continuous")
 print()
 
 # Print nomogram for Logistic Regression
@@ -220,7 +217,7 @@ nomogram_fig.savefig(base_dir / "nomogram.png")
 param_grid = {
     "n_estimators": [100],
     "max_depth": [16],
-    "min_samples_split": [4],
+    "min_samples_split": [2],
     "min_samples_leaf": [1],
     "max_features": ["sqrt"],
     "random_state": [0],
