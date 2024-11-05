@@ -19,7 +19,7 @@ class GitRepo:
 		return None
 
 	def get_path(self) -> str:
-		return (self.base_dir / self.name).absolute()
+		return (self.base_dir / self.name).absolute().as_uri()
 
 	def get_url(self) -> str:
 		return f"{self.url}/{self.owner}/{self.name}"
