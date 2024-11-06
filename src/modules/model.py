@@ -10,6 +10,7 @@ import matplotlib.pyplot as plt
 from pickle import dump, load
 from simpleNomo import nomogram
 import json
+import xlsxwriter
 
 version = "2.0.0"
 
@@ -80,7 +81,7 @@ print()
 
 # Check for missing values
 print("Columns with missing values:")
-missing_values = dataset.iloc[:,1:-1].isnull().sum()
+missing_values = dataset.iloc[:, 1:-1].isnull().sum()
 print(missing_values)
 print()
 
@@ -188,22 +189,38 @@ plt.legend(loc="lower right")
 plt.grid()
 plt.savefig(base_dir / f"logistic_regression_auc-{version}.png")
 
-# Print nomogram info (remove the index and Bugs columns)
-print(f"intercept {logistic_regression_clf.intercept_[0]}   ")
-print(f"threshold 0.5   ")
+# Generate nomogram configuration file using Logistic Regression coefficients and intercept
+workbook = xlsxwriter.Workbook(base_dir / f"nomogram_config-{version}.xlsx")
+worksheet = workbook.add_worksheet()
+worksheet.write("A1", "feature")
+worksheet.write("B1", "coef")
+worksheet.write("C1", "min")
+worksheet.write("D1", "max")
+worksheet.write("E1", "type")
+worksheet.write("F1", "position")
+worksheet.write("A2", "intercept")
+worksheet.write("B2", round(logistic_regression_clf.intercept_[0], 3))
+worksheet.write("A3", "threshold")
+worksheet.write("B3", 0.5)
+# Get variables names from dataframe columns info (remove the index and Bugs columns)
 for i, column in enumerate(dataset.columns[:-1], start=0):
-    print(f"{column} {logistic_regression_clf.coef_[0][i]} {min(dataset[column])} {max(dataset[column])} continuous")
-print()
+    worksheet.write(f"A{i + 4}", column)
+    worksheet.write(f"B{i + 4}", round(logistic_regression_clf.coef_[0][i], 3))
+    worksheet.write(f"C{i + 4}", min(dataset[column]))
+    worksheet.write(f"D{i + 4}", max(dataset[column]))
+    worksheet.write(f"E{i + 4}", "continuous")
+workbook.close()
 
 # Print nomogram for Logistic Regression
-nomogram_fig = nomogram(str(base_dir / f"nomogram_config-{version}.xlsx"), result_title="Positive Risk", fig_width=50, single_height=0.45,
-         dpi=300,
-         ax_para={"c": "black", "linewidth": 1.3, "linestyle": "-"},
-         tick_para={"direction": 'in', "length": 3, "width": 1.5, },
-         xtick_para={"fontsize": 10, "fontfamily": "Songti Sc", "fontweight": "bold"},
-         ylabel_para={"fontsize": 12, "fontname": "Songti Sc", "labelpad": 100,
-                      "loc": "center", "color": "black", "rotation": "horizontal"},
-         total_point=100)
+nomogram_fig = nomogram(str(base_dir / f"nomogram_config-{version}.xlsx"), result_title="Bug risk", fig_width=50,
+                        single_height=0.45,
+                        dpi=300,
+                        ax_para={"c": "black", "linewidth": 1.3, "linestyle": "-"},
+                        tick_para={"direction": 'in', "length": 3, "width": 1.5, },
+                        xtick_para={"fontsize": 10, "fontfamily": "Songti Sc", "fontweight": "bold"},
+                        ylabel_para={"fontsize": 12, "fontname": "Songti Sc", "labelpad": 100,
+                                     "loc": "center", "color": "black", "rotation": "horizontal"},
+                        total_point=100)
 nomogram_fig.savefig(base_dir / f"nomogram-{version}.png")
 
 # Generate Random Forest classifier
