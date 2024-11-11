@@ -10,6 +10,9 @@ import matplotlib.pyplot as plt
 from pickle import dump, load
 from simpleNomo import nomogram
 import json
+import xlsxwriter
+
+version = "2.0.0"
 
 base_dir = Path("/home/augusto/Projects/MGL869-LAB/files")
 
@@ -30,7 +33,7 @@ with open(base_dir / "files_with_bugs.json", "r") as f:
 # Add "Bugs" column
 bugs = pd.DataFrame(np.zeros(len(dataset)), columns=["Bugs"])
 dataset = pd.concat([dataset, bugs], axis=1)
-java_files = [Path(file).name for file in files_with_bugs["2.0.0"] if Path(file).suffix == ".java"]
+java_files = [Path(file).name for file in files_with_bugs[version] if Path(file).suffix == ".java"]
 dataset.loc[dataset["Name"].isin(java_files), "Bugs"] = 1
 print(f"Total number of .java files: {len(dataset)}")
 print(f"Number of .java files in the \"files_with_bugs.json\": {len(java_files)}")
@@ -78,7 +81,7 @@ print()
 
 # Check for missing values
 print("Columns with missing values:")
-missing_values = dataset.iloc[:,1:-1].isnull().sum()
+missing_values = dataset.iloc[:, 1:-1].isnull().sum()
 print(missing_values)
 print()
 
@@ -92,7 +95,7 @@ for column in dataset_without_outliers.columns[1:-1]:
     dataset_without_outliers = dataset_without_outliers[dataset_without_outliers[column] < q_hi]
 outliers = dataset[~(dataset.index.isin(list(dataset_without_outliers.index)))]
 # Save outliers data to file
-outliers.to_csv(base_dir / "outliers.csv")
+outliers.to_csv(base_dir / f"outliers-{version}.csv")
 dataset = dataset_without_outliers
 print(f"    Final number of rows in the dataset: {len(dataset)}")
 print(
@@ -110,7 +113,7 @@ for column in dataset.columns[1:-1]:
 print()
 
 # Save preprocessed data to file
-dataset.to_csv(base_dir / "metrics_preprocessed.csv")
+dataset.to_csv(base_dir / f"metrics_preprocessed-{version}.csv")
 
 # Drop "Name" column
 dataset = dataset.drop("Name", axis=1)
@@ -131,20 +134,20 @@ y_test = pd.concat([y_test, y_outliers], axis=0)
 
 # Generate Logistic Regression classifier
 # Optimize the hyperparameters choice with a grid search
-# param_grid = {
-#     "penalty": [None, 'l2', 'l1', 'elasticnet'],
-#     "solver": ['newton-cg', 'newton-cholesky', 'lbfgs', 'sag', 'saga'],
-#     "max_iter": [100, 300, 500, 1000]
-# }
-# BEST PARAMETERS
 param_grid = {
-    "penalty": ['l2'],
-    "solver": ['lbfgs'],
-    "max_iter": [100]
+    "penalty": [None, 'l2', 'l1', 'elasticnet'],
+    "solver": ['newton-cg', 'newton-cholesky', 'lbfgs', 'sag', 'saga'],
+    "max_iter": [100, 300, 500, 1000]
 }
+# BEST PARAMETERS
+# param_grid = {
+#     "penalty": ['l2'],
+#     "solver": ['lbfgs'],
+#     "max_iter": [100]
+# }
 existing_model = True
 try:
-    with open(base_dir / "logistic_regression_model.pkl", "rb") as f:
+    with open(base_dir / f"logistic_regression_model-{version}.pkl", "rb") as f:
         logistic_regression_clf = load(f)
 except FileNotFoundError:
     existing_model = False
@@ -154,10 +157,11 @@ if not existing_model:
     logistic_regression_clf = LogisticRegression(**logistic_regression_clf.best_params_)
     logistic_regression_clf.fit(X_train, y_train)
     # Save model
-    with open(base_dir / "logistic_regression_model.pkl", "wb") as f:
+    with open(base_dir / f"logistic_regression_model-{version}.pkl", "wb") as f:
         dump(logistic_regression_clf, f, protocol=5)
 print(f"logistic_regression_clf best params: {logistic_regression_clf.get_params()}")
 print(f"logistic_regression_clf coefficients: {logistic_regression_clf.coef_[0]}")
+print(f"logistic_regression_clf intercept_: {logistic_regression_clf.intercept_[0]}")
 lr_predicted = logistic_regression_clf.predict(X_test)
 lr_predicted_probs = logistic_regression_clf.predict_proba(X_test)[:, 1]
 lr_precision, lr_recall, lr_fscore, lr_support = score(y_test, lr_predicted)
@@ -180,51 +184,67 @@ plt.plot(lr_fpr, lr_tpr, color="blue", label=f"AUC = {lr_auc:.2f}")
 plt.plot([0, 1], [0, 1], color="gray", linestyle="--")
 plt.xlabel("False Positive Rate")
 plt.ylabel("True Positive Rate")
-plt.title("Logistic Regression AUC Curve")
+plt.title(f"Logistic Regression AUC Curve - version {version}")
 plt.legend(loc="lower right")
 plt.grid()
-plt.savefig(base_dir / "logistic_regression_auc.png")
+plt.savefig(base_dir / f"logistic_regression_auc-{version}.png")
 
-# Print nomogram info (remove the index and Bugs columns)
-print(f"intercept {logistic_regression_clf.coef_[0][-1]}   ")
-print(f"threshold 0.5   ")
+# Generate nomogram configuration file using Logistic Regression coefficients and intercept
+workbook = xlsxwriter.Workbook(base_dir / f"nomogram_config-{version}.xlsx")
+worksheet = workbook.add_worksheet()
+worksheet.write("A1", "feature")
+worksheet.write("B1", "coef")
+worksheet.write("C1", "min")
+worksheet.write("D1", "max")
+worksheet.write("E1", "type")
+worksheet.write("F1", "position")
+worksheet.write("A2", "intercept")
+worksheet.write("B2", round(logistic_regression_clf.intercept_[0], 3))
+worksheet.write("A3", "threshold")
+worksheet.write("B3", 0.5)
+# Get variables names from dataframe columns info (remove the index and Bugs columns)
 for i, column in enumerate(dataset.columns[:-1], start=0):
-    print(f"{column} {logistic_regression_clf.coef_[0][i]} {min(dataset[column])} {max(dataset[column])} continuous")
-print()
+    worksheet.write(f"A{i + 4}", column)
+    worksheet.write(f"B{i + 4}", round(logistic_regression_clf.coef_[0][i], 3))
+    worksheet.write(f"C{i + 4}", min(dataset[column]))
+    worksheet.write(f"D{i + 4}", max(dataset[column]))
+    worksheet.write(f"E{i + 4}", "continuous")
+workbook.close()
 
 # Print nomogram for Logistic Regression
-nomogram_fig = nomogram(str(base_dir / "nomogram_config.xlsx"), result_title="Positive Risk", fig_width=50, single_height=0.45,
-         dpi=300,
-         ax_para={"c": "black", "linewidth": 1.3, "linestyle": "-"},
-         tick_para={"direction": 'in', "length": 3, "width": 1.5, },
-         xtick_para={"fontsize": 10, "fontfamily": "Songti Sc", "fontweight": "bold"},
-         ylabel_para={"fontsize": 12, "fontname": "Songti Sc", "labelpad": 100,
-                      "loc": "center", "color": "black", "rotation": "horizontal"},
-         total_point=100)
-nomogram_fig.savefig(base_dir / "nomogram.png")
+nomogram_fig = nomogram(str(base_dir / f"nomogram_config-{version}.xlsx"), result_title="Bug risk", fig_width=50,
+                        single_height=0.45,
+                        dpi=300,
+                        ax_para={"c": "black", "linewidth": 1.3, "linestyle": "-"},
+                        tick_para={"direction": 'in', "length": 3, "width": 1.5, },
+                        xtick_para={"fontsize": 10, "fontfamily": "Songti Sc", "fontweight": "bold"},
+                        ylabel_para={"fontsize": 12, "fontname": "Songti Sc", "labelpad": 100,
+                                     "loc": "center", "color": "black", "rotation": "horizontal"},
+                        total_point=100)
+nomogram_fig.savefig(base_dir / f"nomogram-{version}.png")
 
 # Generate Random Forest classifier
 # Optimize the hyperparameters choice with a grid search
-# param_grid = {
-#     "n_estimators": [100, 200, 300],
-#     "max_depth": [2, 4, 8, 16],
-#     "min_samples_split": [2, 4],
-#     "min_samples_leaf": [1, 2],
-#     "max_features": ["auto", "sqrt", "log2"],
-#     "random_state": [0],
-# }
-# BEST PARAMETERS
 param_grid = {
-    "n_estimators": [100],
-    "max_depth": [16],
-    "min_samples_split": [2],
-    "min_samples_leaf": [1],
-    "max_features": ["sqrt"],
+    "n_estimators": [100, 200, 300],
+    "max_depth": [2, 4, 8, 16],
+    "min_samples_split": [2, 4],
+    "min_samples_leaf": [1, 2],
+    "max_features": ["auto", "sqrt", "log2"],
     "random_state": [0],
 }
+# BEST PARAMETERS
+# param_grid = {
+#     "n_estimators": [100],
+#     "max_depth": [16],
+#     "min_samples_split": [2],
+#     "min_samples_leaf": [1],
+#     "max_features": ["sqrt"],
+#     "random_state": [0],
+# }
 existing_model = True
 try:
-    with open(base_dir / "random_forest_model.pkl", "rb") as f:
+    with open(base_dir / f"random_forest_model-{version}.pkl", "rb") as f:
         random_forest_clf = load(f)
 except FileNotFoundError:
     existing_model = False
@@ -234,7 +254,7 @@ if not existing_model:
     random_forest_clf = RandomForestClassifier(**random_forest_clf.best_params_)
     random_forest_clf.fit(X_train, y_train)
     # Save model
-    with open(base_dir / "random_forest_model.pkl", "wb") as f:
+    with open(base_dir / f"random_forest_model-{version}.pkl", "wb") as f:
         dump(random_forest_clf, f, protocol=5)
 print(f"random_forest_clf best params: {random_forest_clf.get_params()}")
 rf_predicted = random_forest_clf.predict(X_test)
@@ -259,7 +279,7 @@ plt.plot(rf_fpr, rf_tpr, color="blue", label=f"AUC = {rf_auc:.2f}")
 plt.plot([0, 1], [0, 1], color="gray", linestyle="--")
 plt.xlabel("False Positive Rate")
 plt.ylabel("True Positive Rate")
-plt.title("Random Forest AUC Curve")
+plt.title(f"Random Forest AUC Curve - version {version}")
 plt.legend(loc="lower right")
 plt.grid()
-plt.savefig(base_dir / "random_forest_auc.png")
+plt.savefig(base_dir / f"random_forest_auc-{version}.png")
