@@ -1,5 +1,7 @@
+import os
 import numpy as np
 import pandas as pd
+import seaborn as sns
 from pathlib import Path
 from sklearn.ensemble import RandomForestClassifier
 from sklearn.linear_model import LogisticRegression
@@ -16,7 +18,7 @@ version = "2_0_0"
 
 dots_separated_version = ".".join(version.split("_"))
 
-base_dir = Path("/home/augusto/Projects/MGL869-LAB/files")
+base_dir = Path(os.path.realpath(__file__)).parent.parent.parent / "files"
 
 all_metrics_path = base_dir / f"und_hive_all_metrics_{version}.csv"
 
@@ -26,47 +28,43 @@ if not all_metrics_path.exists():
 
     dataset = pd.read_csv(metrics_path)
 
-    # Extract classes metrics
-    classes_metrics = ["CountClassBase", "CountClassCoupled", "CountClassDerived", "CountClassCoupledModified",
-                       "CountDeclMethodAll", "MaxInheritanceTree", "PercentLackOfCohesion",
+    def calculate_value(dataset, file_name, column_name, type):
+        """Calculate the metrics value (from column with `column_name`) for the file name, considering the metrics
+        type ("Class", "Method" or "Package")."""
+        if "Count" in column_name:
+            return dataset[(dataset["Kind"].str.contains(type)) & (
+                dataset["Name"].str.contains(file_name))][column_name].sum()
+        elif "Max" in column_name:
+            return dataset[(dataset["Kind"].str.contains(type)) & (
+                dataset["Name"].str.contains(file_name))][column_name].max()
+        else:
+            return dataset[(dataset["Kind"].str.contains(type)) & (
+                dataset["Name"].str.contains(file_name))][column_name].median()
+
+    # Extract classes, methods and package metrics
+    classes_metrics = ["CountClassBase", "CountClassCoupled", "CountClassCoupledModified", "CountClassDerived",
+                       "CountClassCoupledModified", "CountDeclMethodAll", "MaxInheritanceTree", "PercentLackOfCohesion",
                        "PercentLackOfCohesionModified"]
+    methods_metrics = ["CountInput", "CountOutput", "CountPath", "Cyclomatic"]
+    packages_metrics = ["CountDeclFile"]
     for i, file_name in enumerate(dataset[dataset["Kind"] == "File"]["Name"], start=1):
         print(f"{i} - {file_name}")
+        file_name_without_extension = Path(file_name).stem
         for column_name in classes_metrics:
-            file_name_without_extension = Path(file_name).stem
-            if "Count" in column_name:
-                value = dataset[(dataset["Kind"].str.contains("Class")) & (
-                    dataset["Name"].str.contains(file_name_without_extension))][column_name].sum()
-            elif "Max" in column_name:
-                value = dataset[(dataset["Kind"].str.contains("Class")) & (
-                    dataset["Name"].str.contains(file_name_without_extension))][column_name].max()
-            else:
-                value = dataset[(dataset["Kind"].str.contains("Class")) & (
-                    dataset["Name"].str.contains(file_name_without_extension))][column_name].median()
+            value = calculate_value(dataset, file_name_without_extension, column_name, "Class")
             dataset.loc[(dataset["Kind"] == "File") & (dataset["Name"] == file_name), column_name] = 0 if np.isnan(
                 value) else value
-
-    # Extract methods metrics
-    methods_metrics = ["CountInput", "CountOutput", "CountPath", "Cyclomatic"]
-    for i, file_name in enumerate(dataset[dataset["Kind"] == "File"]["Name"], start=1):
-        print(f"{i} - {file_name}")
         for column_name in methods_metrics:
-            file_name_without_extension = Path(file_name).stem
-            if "Count" in column_name:
-                value = dataset[(dataset["Kind"].str.contains("Method")) & (
-                    dataset["Name"].str.contains(file_name_without_extension))][column_name].sum()
-            elif "Max" in column_name:
-                value = dataset[(dataset["Kind"].str.contains("Method")) & (
-                    dataset["Name"].str.contains(file_name_without_extension))][column_name].max()
-            else:
-                value = dataset[(dataset["Kind"].str.contains("Method")) & (
-                    dataset["Name"].str.contains(file_name_without_extension))][column_name].median()
+            value = calculate_value(dataset, file_name_without_extension, column_name, "Method")
+            dataset.loc[(dataset["Kind"] == "File") & (dataset["Name"] == file_name), column_name] = 0 if np.isnan(
+                value) else value
+        for column_name in packages_metrics:
+            value = calculate_value(dataset, file_name_without_extension, column_name, "Package")
             dataset.loc[(dataset["Kind"] == "File") & (dataset["Name"] == file_name), column_name] = 0 if np.isnan(
                 value) else value
 
     # Save file all metrics data to file
     dataset.to_csv(base_dir / f"und_hive_all_metrics_{version}.csv", index=False)
-
 else:
     dataset = pd.read_csv(all_metrics_path)
 
