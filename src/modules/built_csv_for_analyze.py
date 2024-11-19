@@ -94,6 +94,11 @@ for i, file_name in enumerate(filtered_dataset["Name"], start=1):
         for spec, value in method_values.items():
             filtered_dataset.loc[filtered_dataset["Name"] == file_name, col + spec] = 0 if np.isnan(value) else value
 
+
+
+# Remove the specified columns
+filtered_dataset = filtered_dataset.drop(columns=methods_metrics)
+
 filtered_dataset.to_csv(base_dir / f"und_hive_all_metrics_{version}.csv", index=False)
 
 # Enregistrez l'heure de fin
