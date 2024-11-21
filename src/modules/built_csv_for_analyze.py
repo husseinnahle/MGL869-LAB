@@ -42,14 +42,10 @@ def calculate_value_class(dataset, column_name, mask):
     if class_data.empty:
         return np.nan
 
-    if "Count" in column_name:
-        return class_data[column_name].sum()
-    elif "Max" in column_name:
-        return class_data[column_name].max()
-    else:
-        if class_data[column_name].empty:
-            return np.nan
-        return class_data[column_name].mean()
+    class_data = class_data[column_name].dropna()
+    if class_data[column_name].empty:
+        return np.nan
+    return class_data[column_name].mean()
 
 def calculate_value_method(dataset, column_name, specification, mask):
     method_data = dataset.loc[mask & dataset["Kind"].str.contains("Method")]
@@ -63,11 +59,7 @@ def calculate_value_method(dataset, column_name, specification, mask):
     else: #Mean
         if method_data[column_name].empty:
             return np.nan
-
-        if column_name != "CountPath":
-            return method_data[column_name].mean()
-        else: #CountPath
-            return method_data[column_name].median()
+        return method_data[column_name].mean()
 
 classes_metrics = ["CountClassBase", "CountClassCoupled", "CountClassDerived", "MaxInheritanceTree", "PercentLackOfCohesion"]
 methods_metrics = ["CountInput", "CountOutput", "CountPath", "MaxNesting"]
