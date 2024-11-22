@@ -8,12 +8,9 @@ import time
 # Enregistrez l'heure de début
 start_time = time.time()
 
-version = "2_3_0"
+version = "3_1_0"
 
-dots_separated_version = ".".join(version.split("_"))
-
-#base_dir = Path(os.path.realpath(__file__)).parent.parent.parent / "files" / version
-base_dir = Path(os.path.realpath(__file__)).parent.parent.parent.parent.parent/"Doc"
+base_dir = Path(os.path.realpath(__file__)).parent.parent.parent / "data" / "metrics"
 
 logging.basicConfig(filename=base_dir / f"logs_{version}.log",
                     filemode='w',
@@ -42,7 +39,6 @@ def calculate_value_class(dataset, column_name, mask):
     if class_data.empty:
         return np.nan
 
-    class_data = class_data[column_name].dropna()
     if class_data[column_name].empty:
         return np.nan
     return class_data[column_name].mean()

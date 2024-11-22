@@ -36,7 +36,7 @@ release_versions = load_release_versions(file_path)
 for version in release_versions:
     JIRA_SEARCH_FILTER = "project = HIVE AND issuetype = Bug AND status in (Resolved, Closed) AND resolution = Fixed AND affectedVersion = " + version
     OUTPUT_FILE_NAME = "Bugs_" + version + ".csv"
-    OUTPUT_FILE = Path(OUTPUT_FILE_NAME)  # Extraire les commits dans ce fichier
+    OUTPUT_FILE = Path(os.path.realpath(__file__)).parent.parent/"data"/"metrics"/OUTPUT_FILE_NAME  # Extraire les commits dans ce fichier
 
     print("Extracting jira issues...")
     issues = {}
