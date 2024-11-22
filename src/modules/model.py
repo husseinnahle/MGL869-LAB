@@ -107,40 +107,40 @@ if not all_metrics_path.exists():
 
     filtered_dataset.to_csv(base_dir / f"und_hive_all_metrics_{version}.csv", index=False)
 else:
-    dataset = pd.read_csv(all_metrics_path)
+    filtered_dataset = pd.read_csv(all_metrics_path)
 
 # Keep only "Name" and variables columns and "File" rows and
-dataset = dataset.query('Kind == "File"').drop("Kind", axis=1)
+#dataset = dataset.query('Kind == "File"').drop("Kind", axis=1)
 
 # Reset dataframe index
-dataset = dataset.reset_index(drop=True)
+#filtered_dataset = filtered_dataset.reset_index(drop=True)
 
 # Read the files with bugs json
 with open(base_dir.parent / f"files_with_bugs.json", "r") as f:
     files_with_bugs = json.loads(f.read())
 
 # Add "Bugs" column
-bugs = pd.DataFrame(np.zeros(len(dataset)), columns=["Bugs"])
-dataset = pd.concat([dataset, bugs], axis=1)
+bugs = pd.DataFrame(np.zeros(len(filtered_dataset)), columns=["Bugs"])
+filtered_dataset = pd.concat([filtered_dataset, bugs], axis=1)
 java_files = [Path(file).name for file in files_with_bugs[dots_separated_version] if Path(file).suffix == ".java"]
-dataset.loc[dataset["Name"].isin(java_files), "Bugs"] = 1
-logging.info(f"Total number of .java files: {len(dataset)}")
+filtered_dataset.loc[filtered_dataset["Name"].isin(java_files), "Bugs"] = 1
+logging.info(f"Total number of .java files: {len(filtered_dataset)}")
 logging.info(f"Number of .java files in the \"files_with_bugs_{version}.json\": {len(java_files)}")
-logging.info(f"Number of .java files with bug in the dataset: {len(dataset.loc[dataset["Bugs"] == 1, "Bugs"])}")
-logging.info(f"Missing .java files in the dataset:")
+logging.info(f"Number of .java files with bug in the filtered_dataset: {len(filtered_dataset.loc[filtered_dataset["Bugs"] == 1, "Bugs"])}")
+logging.info(f"Missing .java files in the filtered_dataset:")
 for file in java_files:
-    if file not in list(dataset["Name"]):
+    if file not in list(filtered_dataset["Name"]):
         logging.info(f"    {file}")
 logging.info("")
 
 # Display initial variable columns
-initial_columns = list(dataset.columns[1:-1])
+initial_columns = list(filtered_dataset.columns[1:-1])
 logging.info(f"Initial variable columns: {len(initial_columns)}")
 logging.info("")
 
 # Drop columns with all NaN
-dataset = dataset.dropna(axis=1, how='all')
-remaining_columns = list(dataset.columns[1:-1])
+filtered_dataset = filtered_dataset.dropna(axis=1, how='all')
+remaining_columns = list(filtered_dataset.columns[1:-1])
 logging.info("Drop all NaN columns")
 logging.info(f"Remaining columns ({len(remaining_columns)}):")
 for column in remaining_columns:
@@ -152,13 +152,13 @@ for column in dropped_columns:
 logging.info("")
 
 # Drop columns with all same value
-initial_columns = list(dataset.columns[1:-1])
+initial_columns = list(filtered_dataset.columns[1:-1])
 logging.info("Drop same value columns")
 logging.info(f"Initial columns: {len(initial_columns)}")
-number_unique = dataset.nunique()
+number_unique = filtered_dataset.nunique()
 cols_to_drop = number_unique[number_unique == 1].index
-dataset = dataset.drop(cols_to_drop, axis=1)
-remaining_columns = list(dataset.columns[1:-1])
+filtered_dataset = filtered_dataset.drop(cols_to_drop, axis=1)
+remaining_columns = list(filtered_dataset.columns[1:-1])
 logging.info(f"Remaining columns ({len(remaining_columns)}):")
 for column in remaining_columns:
     logging.info(f"    {column}")
@@ -170,24 +170,24 @@ logging.info("")
 
 # Check for missing values
 logging.info("Columns with missing values:")
-missing_values = dataset.iloc[:, 1:-1].isnull().sum()
+missing_values = filtered_dataset.iloc[:, 1:-1].isnull().sum()
 for column in missing_values.index:
     logging.info(f"    {column}: {missing_values[column]}")
 logging.info("")
 
 
 # Checking boxplots (ref.: https://www.kaggle.com/code/marcinrutecki/gridsearchcv-kfold-cv-the-right-way)
-def boxplots_custom(dataset, columns_list, rows, cols, suptitle):
+def boxplots_custom(filtered_dataset, columns_list, rows, cols, suptitle):
     fig, axs = plt.subplots(rows, cols, sharey=True, figsize=(13, 50))
     fig.suptitle(suptitle, y=1, size=25)
     axs = axs.flatten()
     for i, data in enumerate(columns_list):
-        sns.boxplot(data=dataset[data], orient='h', ax=axs[i])
-        axs[i].set_title(data + ', skewness is: ' + str(round(dataset[data].skew(axis=0, skipna=True), 2)))
+        sns.boxplot(data=filtered_dataset[data], orient='h', ax=axs[i])
+        axs[i].set_title(data + ', skewness is: ' + str(round(filtered_dataset[data].skew(axis=0, skipna=True), 2)))
 
 
-columns_list = list(dataset.columns[1:-1])
-boxplots_custom(dataset=dataset, columns_list=columns_list, rows=math.ceil(len(columns_list) / 3), cols=3,
+columns_list = list(filtered_dataset.columns[1:-1])
+boxplots_custom(filtered_dataset=filtered_dataset, columns_list=columns_list, rows=math.ceil(len(columns_list) / 3), cols=3,
                 suptitle='Boxplots for each variable')
 plt.tight_layout()
 plt.savefig(base_dir / f"boxplots_{version}.png")
@@ -225,22 +225,22 @@ def IQR_method(df, n, features):
 # Use 10 as the `n` argument of `IQR_method` to allow more outliers to be kept, otherwise most of the files with bugs
 # where being removed
 logging.info("Remove outliers:")
-logging.info(f"    Initial number of rows in the dataset: {len(dataset)}")
+logging.info(f"    Initial number of rows in the filtered_dataset: {len(filtered_dataset)}")
 logging.info(
-    f"    Initial number of .java files with bug in the dataset: {len(dataset.loc[dataset["Bugs"] == 1, "Bugs"])}")
-outliers_IQR = IQR_method(dataset, 10, columns_list)
-outliers = dataset.loc[outliers_IQR].reset_index(drop=True)
+    f"    Initial number of .java files with bug in the filtered_dataset: {len(filtered_dataset.loc[filtered_dataset["Bugs"] == 1, "Bugs"])}")
+outliers_IQR = IQR_method(filtered_dataset, 10, columns_list)
+outliers = filtered_dataset.loc[outliers_IQR].reset_index(drop=True)
 logging.info(f"    Total number of outliers is: {len(outliers_IQR)}")
 outliers.to_csv(base_dir / f"outliers_{version}.csv", index=False)
-dataset = dataset.drop(outliers_IQR, axis=0).reset_index(drop=True)
-logging.info(f"    Final number of rows in the dataset: {len(dataset)}")
+filtered_dataset = filtered_dataset.drop(outliers_IQR, axis=0).reset_index(drop=True)
+logging.info(f"    Final number of rows in the filtered_dataset: {len(filtered_dataset)}")
 logging.info(
-    f"    Final number of .java files with bug in the dataset: {len(dataset.loc[dataset["Bugs"] == 1, "Bugs"])}")
+    f"    Final number of .java files with bug in the filtered_dataset: {len(filtered_dataset.loc[filtered_dataset["Bugs"] == 1, "Bugs"])}")
 logging.info("")
 
 # Remove correlated columns
 # Ref.: https://www.kaggle.com/code/prashant111/comprehensive-guide-on-feature-selection#2.6-Correlation-Matrix-with-Heatmap-
-corr_matrix = dataset.iloc[:, 1:-1].corr()
+corr_matrix = filtered_dataset.iloc[:, 1:-1].corr()
 
 # Create correlation heatmap
 plt.figure(figsize=(77,75))
@@ -261,25 +261,25 @@ for column in to_drop:
     logging.info(f"    {column}, correlated to: {correlated_to}")
 
 # Drop correlated columns
-dataset = dataset.drop(to_drop, axis=1)
+filtered_dataset = filtered_dataset.drop(to_drop, axis=1)
 outliers = outliers.drop(to_drop, axis=1)
 
 # Print variables range
 logging.info("Variables range:")
-for column in dataset.columns[1:-1]:
-    logging.info(f"    {column}: {min(dataset[column])} - {max(dataset[column])}")
+for column in filtered_dataset.columns[1:-1]:
+    logging.info(f"    {column}: {min(filtered_dataset[column])} - {max(filtered_dataset[column])}")
 logging.info("")
 
 # Save preprocessed data to file
-dataset.to_csv(base_dir / f"und_hive_metrics_preprocessed_{version}.csv", index=False)
+filtered_dataset.to_csv(base_dir / f"und_hive_metrics_preprocessed_{version}.csv", index=False)
 
 # Drop "Name" column
-dataset = dataset.drop("Name", axis=1)
+filtered_dataset = filtered_dataset.drop("Name", axis=1)
 outliers = outliers.drop("Name", axis=1)
 
 # Separate data from labels
-X = dataset.iloc[:, :-1]
-y = dataset.iloc[:, -1]
+X = filtered_dataset.iloc[:, :-1]
+y = filtered_dataset.iloc[:, -1]
 X_train, X_test, y_train, y_test = train_test_split(
     X, y, test_size=0.3, random_state=0
 )
@@ -373,11 +373,11 @@ worksheet.write("B2", round(logistic_regression_clf.intercept_[0], 4))
 worksheet.write("A3", "threshold")
 worksheet.write("B3", 0.5)
 # Get variables names from dataframe columns info (remove the index and Bugs columns)
-for i, column in enumerate(dataset.columns[:-1], start=0):
+for i, column in enumerate(filtered_dataset.columns[:-1], start=0):
     worksheet.write(f"A{i + 4}", column)
     worksheet.write(f"B{i + 4}", round(logistic_regression_clf.coef_[0][i], 4))
-    worksheet.write(f"C{i + 4}", min(dataset[column]))
-    worksheet.write(f"D{i + 4}", max(dataset[column]))
+    worksheet.write(f"C{i + 4}", min(filtered_dataset[column]))
+    worksheet.write(f"D{i + 4}", max(filtered_dataset[column]))
     worksheet.write(f"E{i + 4}", "continuous")
 workbook.close()
 
