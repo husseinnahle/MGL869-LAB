@@ -18,7 +18,7 @@ import json
 import xlsxwriter
 from statistics import stdev
 
-version = "2_0_0"
+version = "2_2_0"
 
 dots_separated_version = ".".join(version.split("_"))
 
