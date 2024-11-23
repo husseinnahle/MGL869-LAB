@@ -18,13 +18,20 @@ import json
 import xlsxwriter
 from statistics import stdev
 
-version = "2_2_0"
+version = "2_0_0"
 
 dots_separated_version = ".".join(version.split("_"))
 
-base_dir = Path(os.path.realpath(__file__)).parent.parent.parent / "data" / "metrics"
+base_dir = Path(os.path.realpath(__file__)).parent.parent.parent
 
-logging.basicConfig(filename=base_dir / f"logs_{version}.log",
+data_dir = base_dir / "data"
+
+metrics_dir = data_dir / "metrics"
+
+version_output_dir = base_dir / "output" / version
+version_output_dir.mkdir(exist_ok=True)
+
+logging.basicConfig(filename=version_output_dir / f"logs_{version}.log",
                     filemode='w',
                     format='%(asctime)s,%(msecs)d %(name)s %(levelname)s %(message)s',
                     datefmt='%H:%M:%S',
@@ -32,11 +39,11 @@ logging.basicConfig(filename=base_dir / f"logs_{version}.log",
 
 logging.getLogger('matplotlib').setLevel(logging.ERROR)
 
-all_metrics_path = base_dir / f"und_hive_all_metrics_{version}.csv"
+all_metrics_path = metrics_dir / f"und_hive_all_metrics_{version}.csv"
 
 if not all_metrics_path.exists():
 
-    metrics_path = base_dir / f"und_hive_{version}.csv"
+    metrics_path = metrics_dir / f"und_hive_{version}.csv"
 
     dataset = pd.read_csv(metrics_path)
     # List of column names to be removed
@@ -105,18 +112,28 @@ if not all_metrics_path.exists():
     # Remove the specified columns
     filtered_dataset = filtered_dataset.drop(columns=methods_metrics)
 
-    filtered_dataset.to_csv(base_dir / f"und_hive_all_metrics_{version}.csv", index=False)
+    filtered_dataset.to_csv(metrics_dir / f"und_hive_all_metrics_{version}.csv", index=False)
 else:
     filtered_dataset = pd.read_csv(all_metrics_path)
 
-# Keep only "Name" and variables columns and "File" rows and
-#dataset = dataset.query('Kind == "File"').drop("Kind", axis=1)
+# Drop "Kind" column
+filtered_dataset = filtered_dataset.drop("Kind", axis=1)
 
-# Reset dataframe index
-#filtered_dataset = filtered_dataset.reset_index(drop=True)
+
+def divided_count_path(dataset, operation):
+    """Change "CountPath" scale because numbers are too big in regard to other columns"""
+    count_path_operation = f"CountPath{operation}"
+    max_nb_of_digits = math.floor(math.log10(max(dataset[count_path_operation]))) + 1
+    multiples_of_1000 = max_nb_of_digits // 3
+    division_factor = 10 ** (3 * (multiples_of_1000 - 1))
+    dataset[count_path_operation] = dataset[count_path_operation].apply(lambda x: round(x / division_factor, 0))
+    return dataset.rename(columns={count_path_operation: f"{count_path_operation}-divided-by-{division_factor:,}"})
+
+for operation in ["Min", "Max", "Mean"]:
+    filtered_dataset = divided_count_path(filtered_dataset, operation)
 
 # Read the files with bugs json
-with open(base_dir.parent / f"files_with_bugs.json", "r") as f:
+with open(data_dir / f"files_with_bugs.json", "r") as f:
     files_with_bugs = json.loads(f.read())
 
 # Add "Bugs" column
@@ -151,29 +168,41 @@ for column in dropped_columns:
     logging.info(f"    {column}")
 logging.info("")
 
-# Drop columns with all same value
-initial_columns = list(filtered_dataset.columns[1:-1])
-logging.info("Drop same value columns")
-logging.info(f"Initial columns: {len(initial_columns)}")
-number_unique = filtered_dataset.nunique()
-cols_to_drop = number_unique[number_unique == 1].index
-filtered_dataset = filtered_dataset.drop(cols_to_drop, axis=1)
-remaining_columns = list(filtered_dataset.columns[1:-1])
-logging.info(f"Remaining columns ({len(remaining_columns)}):")
-for column in remaining_columns:
-    logging.info(f"    {column}")
-dropped_columns = [column for column in initial_columns if column not in remaining_columns]
-logging.info(f"Dropped same value columns ({len(dropped_columns)}):")
-for column in dropped_columns:
-    logging.info(f"    {column}")
-logging.info("")
-
 # Check for missing values
 logging.info("Columns with missing values:")
 missing_values = filtered_dataset.iloc[:, 1:-1].isnull().sum()
 for column in missing_values.index:
     logging.info(f"    {column}: {missing_values[column]}")
+logging.info(f"Total rows with missing values removed: {len(filtered_dataset[~(filtered_dataset.index.isin(filtered_dataset.dropna().index))])}")
+filtered_dataset = filtered_dataset.dropna()
+logging.info(f"Total rows remaining: {len(filtered_dataset)}")
 logging.info("")
+
+# Remove correlated columns
+# Ref.: https://www.kaggle.com/code/prashant111/comprehensive-guide-on-feature-selection#2.6-Correlation-Matrix-with-Heatmap-
+corr_matrix = filtered_dataset.iloc[:, 1:-1].corr()
+
+# Create correlation heatmap
+plt.figure(figsize=(77,75))
+plt.title(f'Correlation Heatmap version {dots_separated_version}')
+a = sns.heatmap(corr_matrix, square=True, annot=True, fmt='.2f', linecolor='black')
+a.set_xticklabels(a.get_xticklabels(), rotation=30)
+a.set_yticklabels(a.get_yticklabels(), rotation=30)
+plt.savefig(version_output_dir / f"correlation_heatmap_{version}.png")
+
+# Select upper triangle of correlation matrix
+upper = corr_matrix.where(np.triu(np.ones(corr_matrix.shape), k=1).astype(np.bool))
+
+# Find index of feature columns with correlation greater than 0.9
+to_drop = [column for column in upper.columns if any(upper[column].abs() > 0.9)]
+logging.info("Correlated columns to be dropped:")
+for column in to_drop:
+    correlated_to = list(upper[upper[column].abs() > 0.9].index)
+    logging.info(f"    {column}, correlated to: {correlated_to}")
+logging.info("")
+
+# Drop correlated columns
+filtered_dataset = filtered_dataset.drop(to_drop, axis=1)
 
 
 # Checking boxplots (ref.: https://www.kaggle.com/code/marcinrutecki/gridsearchcv-kfold-cv-the-right-way)
@@ -190,7 +219,7 @@ columns_list = list(filtered_dataset.columns[1:-1])
 boxplots_custom(filtered_dataset=filtered_dataset, columns_list=columns_list, rows=math.ceil(len(columns_list) / 3), cols=3,
                 suptitle='Boxplots for each variable')
 plt.tight_layout()
-plt.savefig(base_dir / f"boxplots_{version}.png")
+plt.savefig(version_output_dir / f"boxplots_{version}.png")
 
 
 def IQR_method(df, n, features):
@@ -222,56 +251,53 @@ def IQR_method(df, n, features):
 
 
 # Remove outliers (save the outliers to disk)
-# Use 10 as the `n` argument of `IQR_method` to allow more outliers to be kept, otherwise most of the files with bugs
+# Adjut the `n` argument of `IQR_method` to allow more outliers to be kept, otherwise most of the files with bugs
 # where being removed
+n = 10
 logging.info("Remove outliers:")
 logging.info(f"    Initial number of rows in the filtered_dataset: {len(filtered_dataset)}")
 logging.info(
     f"    Initial number of .java files with bug in the filtered_dataset: {len(filtered_dataset.loc[filtered_dataset["Bugs"] == 1, "Bugs"])}")
-outliers_IQR = IQR_method(filtered_dataset, 10, columns_list)
+logging.info(f"    IQR_method n argument: {n}")
+outliers_IQR = IQR_method(filtered_dataset, n, columns_list)
 outliers = filtered_dataset.loc[outliers_IQR].reset_index(drop=True)
 logging.info(f"    Total number of outliers is: {len(outliers_IQR)}")
-outliers.to_csv(base_dir / f"outliers_{version}.csv", index=False)
+# Drop outliers
 filtered_dataset = filtered_dataset.drop(outliers_IQR, axis=0).reset_index(drop=True)
 logging.info(f"    Final number of rows in the filtered_dataset: {len(filtered_dataset)}")
 logging.info(
     f"    Final number of .java files with bug in the filtered_dataset: {len(filtered_dataset.loc[filtered_dataset["Bugs"] == 1, "Bugs"])}")
 logging.info("")
 
-# Remove correlated columns
-# Ref.: https://www.kaggle.com/code/prashant111/comprehensive-guide-on-feature-selection#2.6-Correlation-Matrix-with-Heatmap-
-corr_matrix = filtered_dataset.iloc[:, 1:-1].corr()
-
-# Create correlation heatmap
-plt.figure(figsize=(77,75))
-plt.title(f'Correlation Heatmap version {dots_separated_version}')
-a = sns.heatmap(corr_matrix, square=True, annot=True, fmt='.2f', linecolor='black')
-a.set_xticklabels(a.get_xticklabels(), rotation=30)
-a.set_yticklabels(a.get_yticklabels(), rotation=30)
-plt.savefig(base_dir / f"correlation_heatmap_{version}.png")
-
-# Select upper triangle of correlation matrix
-upper = corr_matrix.where(np.triu(np.ones(corr_matrix.shape), k=1).astype(np.bool))
-
-# Find index of feature columns with correlation greater than 0.9
-to_drop = [column for column in upper.columns if any(upper[column].abs() > 0.9)]
-logging.info("Correlated columns to be dropped:")
-for column in to_drop:
-    correlated_to = list(upper[upper[column].abs() > 0.9].index)
-    logging.info(f"    {column}, correlated to: {correlated_to}")
-
-# Drop correlated columns
-filtered_dataset = filtered_dataset.drop(to_drop, axis=1)
-outliers = outliers.drop(to_drop, axis=1)
+# Drop columns with all same value
+initial_columns = list(filtered_dataset.columns[1:-1])
+logging.info("Drop same value columns after outliers removal")
+logging.info(f"Initial columns: {len(initial_columns)}")
+number_unique = filtered_dataset.nunique()
+cols_to_drop = number_unique[number_unique == 1].index
+filtered_dataset = filtered_dataset.drop(cols_to_drop, axis=1)
+outliers_dataset = outliers.drop(cols_to_drop, axis=1)
+remaining_columns = list(filtered_dataset.columns[1:-1])
+logging.info(f"Remaining columns ({len(remaining_columns)}):")
+for column in remaining_columns:
+    logging.info(f"    {column}")
+dropped_columns = [column for column in initial_columns if column not in remaining_columns]
+logging.info(f"Dropped same value columns ({len(dropped_columns)}):")
+for column in dropped_columns:
+    logging.info(f"    {column}")
+logging.info("")
 
 # Print variables range
 logging.info("Variables range:")
 for column in filtered_dataset.columns[1:-1]:
-    logging.info(f"    {column}: {min(filtered_dataset[column])} - {max(filtered_dataset[column])}")
+    logging.info(f"    {column}: {round(min(filtered_dataset[column]), 1)} - {round(max(filtered_dataset[column]), 1)}")
 logging.info("")
 
 # Save preprocessed data to file
-filtered_dataset.to_csv(base_dir / f"und_hive_metrics_preprocessed_{version}.csv", index=False)
+filtered_dataset.to_csv(version_output_dir / f"und_hive_metrics_preprocessed_{version}.csv", index=False)
+
+# Save outliers data to file
+outliers.to_csv(version_output_dir / f"outliers_{version}.csv", index=False)
 
 # Drop "Name" column
 filtered_dataset = filtered_dataset.drop("Name", axis=1)
@@ -285,10 +311,10 @@ X_train, X_test, y_train, y_test = train_test_split(
 )
 
 # Add outliers to test sets
-X_outliers = outliers.iloc[:, :-1]
-y_outliers = outliers.iloc[:, -1]
-X_test = pd.concat([X_test, X_outliers], axis=0)
-y_test = pd.concat([y_test, y_outliers], axis=0)
+# X_outliers = outliers.iloc[:, :-1]
+# y_outliers = outliers.iloc[:, -1]
+# X_test = pd.concat([X_test, X_outliers], axis=0)
+# y_test = pd.concat([y_test, y_outliers], axis=0)
 
 # Set 10-fold cross-validation
 kf = KFold(n_splits=10, shuffle=False)
@@ -308,7 +334,7 @@ param_grid = {
 # }
 existing_model = True
 try:
-    with open(base_dir / f"logistic_regression_model_{version}.pkl", "rb") as f:
+    with open(version_output_dir / f"logistic_regression_model_{version}.pkl", "rb") as f:
         logistic_regression_clf = load(f)
 except FileNotFoundError:
     existing_model = False
@@ -318,7 +344,7 @@ if not existing_model:
     logistic_regression_grid.fit(X_train, y_train)
     logistic_regression_clf = logistic_regression_grid.best_estimator_
     # Save model
-    with open(base_dir / f"logistic_regression_model_{version}.pkl", "wb") as f:
+    with open(version_output_dir / f"logistic_regression_model_{version}.pkl", "wb") as f:
         dump(logistic_regression_clf, f, protocol=5)
 logging.info(f"logistic_regression_clf best params: {logistic_regression_clf.get_params()}")
 logging.info(f"logistic_regression_clf coefficients: {logistic_regression_clf.coef_[0]}")
@@ -357,10 +383,10 @@ plt.ylabel("True Positive Rate")
 plt.title(f"Logistic Regression AUC Curve - version {dots_separated_version}")
 plt.legend(loc="lower right")
 plt.grid()
-plt.savefig(base_dir / f"logistic_regression_auc_{version}.png")
+plt.savefig(version_output_dir / f"logistic_regression_auc_{version}.png")
 
 # Generate nomogram configuration file using Logistic Regression coefficients and intercept
-workbook = xlsxwriter.Workbook(base_dir / f"nomogram_config_{version}.xlsx")
+workbook = xlsxwriter.Workbook(version_output_dir / f"nomogram_config_{version}.xlsx")
 worksheet = workbook.add_worksheet()
 worksheet.write("A1", "feature")
 worksheet.write("B1", "coef")
@@ -376,13 +402,13 @@ worksheet.write("B3", 0.5)
 for i, column in enumerate(filtered_dataset.columns[:-1], start=0):
     worksheet.write(f"A{i + 4}", column)
     worksheet.write(f"B{i + 4}", round(logistic_regression_clf.coef_[0][i], 4))
-    worksheet.write(f"C{i + 4}", min(filtered_dataset[column]))
-    worksheet.write(f"D{i + 4}", max(filtered_dataset[column]))
+    worksheet.write(f"C{i + 4}", round(min(filtered_dataset[column]), 1))
+    worksheet.write(f"D{i + 4}", round(max(filtered_dataset[column]), 1))
     worksheet.write(f"E{i + 4}", "continuous")
 workbook.close()
 
 # Print nomogram for Logistic Regression
-nomogram_fig = nomogram(str(base_dir / f"nomogram_config_{version}.xlsx"), result_title="Bug risk", fig_width=50,
+nomogram_fig = nomogram(str(version_output_dir / f"nomogram_config_{version}.xlsx"), result_title="Bug risk", fig_width=50,
                         single_height=0.45,
                         dpi=300,
                         ax_para={"c": "black", "linewidth": 1.3, "linestyle": "-"},
@@ -391,7 +417,7 @@ nomogram_fig = nomogram(str(base_dir / f"nomogram_config_{version}.xlsx"), resul
                         ylabel_para={"fontsize": 12, "fontname": "Songti Sc", "labelpad": 100,
                                      "loc": "center", "color": "black", "rotation": "horizontal"},
                         total_point=100)
-nomogram_fig.savefig(base_dir / f"nomogram_{version}.png")
+nomogram_fig.savefig(version_output_dir / f"nomogram_{version}.png")
 
 # Generate Random Forest classifier
 # Optimize the hyperparameters choice with a grid search
@@ -414,7 +440,7 @@ param_grid = {
 # }
 existing_model = True
 try:
-    with open(base_dir / f"random_forest_model_{version}.pkl", "rb") as f:
+    with open(version_output_dir / f"random_forest_model_{version}.pkl", "rb") as f:
         random_forest_clf = load(f)
 except FileNotFoundError:
     existing_model = False
@@ -424,7 +450,7 @@ if not existing_model:
     random_forest_grid.fit(X_train, y_train)
     random_forest_clf = random_forest_grid.best_estimator_
     # Save model
-    with open(base_dir / f"random_forest_model_{version}.pkl", "wb") as f:
+    with open(version_output_dir / f"random_forest_model_{version}.pkl", "wb") as f:
         dump(random_forest_clf, f, protocol=5)
 logging.info(f"random_forest_clf best params: {random_forest_clf.get_params()}")
 
@@ -461,4 +487,4 @@ plt.ylabel("True Positive Rate")
 plt.title(f"Random Forest AUC Curve - version {dots_separated_version}")
 plt.legend(loc="lower right")
 plt.grid()
-plt.savefig(base_dir / f"random_forest_auc_{version}.png")
+plt.savefig(version_output_dir / f"random_forest_auc_{version}.png")
