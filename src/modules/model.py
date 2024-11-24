@@ -126,6 +126,8 @@ def divided_count_path(dataset, operation):
     max_nb_of_digits = math.floor(math.log10(max(dataset[count_path_operation]))) + 1
     multiples_of_1000 = max_nb_of_digits // 3
     division_factor = 10 ** (3 * (multiples_of_1000 - 1))
+    if division_factor == 1:
+        return dataset
     dataset[count_path_operation] = dataset[count_path_operation].apply(lambda x: round(x / division_factor, 0))
     return dataset.rename(columns={count_path_operation: f"{count_path_operation}-divided-by-{division_factor:,}"})
 
