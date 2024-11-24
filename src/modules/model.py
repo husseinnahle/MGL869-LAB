@@ -18,7 +18,7 @@ import json
 import xlsxwriter
 from statistics import stdev
 
-version = "2_0_0"
+version = "3_1_0"
 
 dots_separated_version = ".".join(version.split("_"))
 
@@ -255,7 +255,7 @@ def IQR_method(df, n, features):
 # Remove outliers (save the outliers to disk)
 # Adjut the `n` argument of `IQR_method` to allow more outliers to be kept, otherwise most of the files with bugs
 # where being removed
-n = 10
+n = 20
 logging.info("Remove outliers:")
 logging.info(f"    Initial number of rows in the filtered_dataset: {len(filtered_dataset)}")
 logging.info(
