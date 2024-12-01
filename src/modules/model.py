@@ -15,15 +15,13 @@ from collections import Counter
 import matplotlib.pyplot as plt
 from pickle import dump, load
 from src.modules.custom_simple_nomo import nomogram
-import json
 import xlsxwriter
 from statistics import stdev
 
 
 def generate_model(current_version, previous_version, recalculate_models=True, plot_images=True):
-    print(f"VERSION: {current_version}")
 
-    dots_separated_version = ".".join(current_version.split("_"))
+    dots_separated_current_version = ".".join(current_version.split("_"))
 
     base_dir = Path(os.path.realpath(__file__)).parent.parent.parent
 
@@ -34,9 +32,9 @@ def generate_model(current_version, previous_version, recalculate_models=True, p
     version_output_dir = base_dir / "output" / current_version
     version_output_dir.mkdir(exist_ok=True)
 
-    logging.basicConfig(format='%(asctime)s,%(msecs)d %(name)s %(levelname)s %(message)s',
-                        datefmt='%H:%M:%S',
-                        level=logging.DEBUG)
+    all_metrics_path = metrics_dir / f"und_hive_all_metrics_{current_version}.csv"
+
+    logging.basicConfig(level=logging.DEBUG)
 
     logging.getLogger('matplotlib').setLevel(logging.ERROR)
     file_handler = logging.FileHandler(version_output_dir / f"logs_{current_version}.log", mode='w')
@@ -46,8 +44,8 @@ def generate_model(current_version, previous_version, recalculate_models=True, p
     logger.addHandler(file_handler)
     logger.addHandler(logging.StreamHandler(sys.stdout))
 
-
-    all_metrics_path = metrics_dir / f"und_hive_all_metrics_{current_version}.csv"
+    logging.info(f"VERSION: {current_version}")
+    logging.info("")
 
     if not all_metrics_path.exists():
 
@@ -125,28 +123,29 @@ def generate_model(current_version, previous_version, recalculate_models=True, p
     # Replace negative values with 0
     filtered_dataset.iloc[:, 2:] = filtered_dataset.iloc[:, 2:].clip(lower=0)
 
-    # Read the files with bugs json
-    with open(data_dir / f"files_with_bugs.json", "r") as f:
-        files_with_bugs = json.loads(f.read())
+    # Read the files with bugs
+    files_with_bugs = pd.read_csv(metrics_dir / f"Bugs_{dots_separated_current_version}.csv")
+    files_with_bugs = files_with_bugs["filename"].drop_duplicates()
 
     # Add "Bugs" column
     bugs = pd.DataFrame(np.zeros(len(filtered_dataset)), columns=["Bugs"])
     filtered_dataset = pd.concat([filtered_dataset, bugs], axis=1)
-    java_files = [Path(file).name for file in files_with_bugs[dots_separated_version] if Path(file).suffix == ".java"]
-    filtered_dataset.loc[filtered_dataset["Name"].isin(java_files), "Bugs"] = 1
+    java_files_names = [Path(file_path).name for file_path in files_with_bugs if file_path.endswith(".java")]
+    filtered_dataset.loc[filtered_dataset["Name"].isin(java_files_names), "Bugs"] = 1
     logging.info(f"Total number of .java files: {len(filtered_dataset)}")
-    logging.info(f"Number of .java files in the \"files_with_bugs_{current_version}.json\": {len(java_files)}")
+    logging.info(f"Number of .java files in the \"files_with_bugs_{current_version}.json\": {len(java_files_names)}")
     logging.info(
         f"Number of .java files with bug in the filtered_dataset: {len(filtered_dataset.loc[filtered_dataset["Bugs"] == 1, "Bugs"])}")
     logging.info(f"Missing .java files in the filtered_dataset:")
-    for file in java_files:
+    for file in java_files_names:
         if file not in list(filtered_dataset["Name"]):
             logging.info(f"    {file}")
     logging.info("")
 
     # Add previous version data to dataframe (without duplicates)
     if previous_version:
-        previous_version_filtered_dataset = pd.read_csv(metrics_dir / f"und_hive_all_metrics_and_bugs_{previous_version}.csv")
+        previous_version_filtered_dataset = pd.read_csv(
+            metrics_dir / f"und_hive_all_metrics_and_bugs_{previous_version}.csv")
         filtered_dataset = pd.concat([filtered_dataset, previous_version_filtered_dataset], axis=0, ignore_index=True)
         filtered_dataset = filtered_dataset.drop_duplicates().reset_index(drop=True)
 
@@ -163,14 +162,15 @@ def generate_model(current_version, previous_version, recalculate_models=True, p
     logging.info("")
 
     def divided_count_path(dataset, operation):
-        """Change "CountPath" scale because numbers are too big in regard to other columns"""
+        """Change "CountPath" scale because numbers are too big in regard to other columns.
+        The numbers of the new scale will have a maximum of 4 digits."""
         count_path_operation = f"CountPath{operation}"
         max_nb_of_digits = math.floor(math.log10(max(dataset[count_path_operation]))) + 1
-        multiples_of_1000 = max_nb_of_digits // 3
-        division_factor = 10 ** (3 * (multiples_of_1000 - 1))
+        division_factor = 10 ** (max_nb_of_digits - 3)
         if division_factor == 1:
             return dataset
-        dataset[count_path_operation] = dataset[count_path_operation].apply(lambda x: round(x / division_factor, 0))
+        dataset[count_path_operation] = dataset[count_path_operation].apply(
+            lambda x: x if math.isnan(x) else int(round(x / division_factor, 0)))
         return dataset.rename(columns={count_path_operation: f"{count_path_operation}-divided-by-{division_factor:,}"})
 
     for operation in ["Min", "Max", "Mean"]:
@@ -212,7 +212,7 @@ def generate_model(current_version, previous_version, recalculate_models=True, p
     if plot_images:
         # Create correlation heatmap
         plt.figure(figsize=(77, 75))
-        plt.title(f'Correlation Heatmap version {dots_separated_version}')
+        plt.title(f'Correlation Heatmap version {dots_separated_current_version}')
         a = sns.heatmap(corr_matrix, square=True, annot=True, fmt='.2f', linecolor='black')
         a.set_xticklabels(a.get_xticklabels(), rotation=30)
         a.set_yticklabels(a.get_yticklabels(), rotation=30)
@@ -221,11 +221,12 @@ def generate_model(current_version, previous_version, recalculate_models=True, p
     # Select upper triangle of correlation matrix
     upper = corr_matrix.where(np.triu(np.ones(corr_matrix.shape), k=1).astype(np.bool))
 
-    # Find index of feature columns with correlation greater than 0.9
-    to_drop = [column for column in upper.columns if any(upper[column].abs() > 0.9)]
+    # Find index of feature columns with correlation greater than 0.7
+    correlation_treshold = 0.7
+    to_drop = [column for column in upper.columns if any(upper[column].abs() > correlation_treshold)]
     logging.info("Correlated columns to be dropped:")
     for column in to_drop:
-        correlated_to = list(upper[upper[column].abs() > 0.9].index)
+        correlated_to = list(upper[upper[column].abs() > correlation_treshold].index)
         logging.info(f"    {column}, correlated to: {correlated_to}")
     logging.info("")
 
@@ -277,7 +278,7 @@ def generate_model(current_version, previous_version, recalculate_models=True, p
         return multiple_outliers
 
     # Remove outliers (save the outliers to disk)
-    # Adjut the `n` argument of `IQR_method` to allow more outliers to be kept, otherwise most of the files with bugs
+    # Adjust the `n` argument of `IQR_method` to allow more outliers to be kept, otherwise most of the files with bugs
     # where being removed
     n = 20
     logging.info("Remove outliers:")
@@ -353,12 +354,6 @@ def generate_model(current_version, previous_version, recalculate_models=True, p
         "solver": ['newton-cg', 'newton-cholesky', 'lbfgs', 'sag', 'saga'],
         "max_iter": [100, 300, 500, 1000]
     }
-    # BEST PARAMETERS
-    # param_grid = {
-    #     "penalty": ['l2'],
-    #     "solver": ['lbfgs'],
-    #     "max_iter": [100]
-    # }
     existing_model = True
     try:
         with open(version_output_dir / f"logistic_regression_model_{current_version}.pkl", "rb") as f:
@@ -379,12 +374,18 @@ def generate_model(current_version, previous_version, recalculate_models=True, p
 
     # Calculate 10-fold cross validation scores
     # Ref.: https://www.kaggle.com/code/marcinrutecki/gridsearchcv-kfold-cv-the-right-way
-    score_lr = cross_val_score(logistic_regression_clf, X_train, y_train, cv=kf, scoring='precision')
-    lr_score = score_lr.mean()
-    lr_stdev = stdev(score_lr)
-    logging.info(f'Logistic Regression Cross Validation Precision scores are: {score_lr}')
-    logging.info(f'Logistic Regression Average Cross Validation Precision score: {lr_score}')
-    logging.info(f'Logistic Regression Cross Validation Precision standard deviation: {lr_stdev}')
+    precision_score_lr = cross_val_score(logistic_regression_clf, X_train, y_train, cv=kf, scoring='precision')
+    lr_precision_score = precision_score_lr.mean()
+    lr_precision_stdev = stdev(precision_score_lr)
+    logging.info(f'Logistic Regression Cross Validation Precision scores are: {precision_score_lr}')
+    logging.info(f'Logistic Regression Average Cross Validation Precision score: {lr_precision_score}')
+    logging.info(f'Logistic Regression Cross Validation Precision standard deviation: {lr_precision_stdev}')
+    recall_score_lr = cross_val_score(logistic_regression_clf, X_train, y_train, cv=kf, scoring='recall')
+    lr_recall_score = recall_score_lr.mean()
+    lr_recall_stdev = stdev(recall_score_lr)
+    logging.info(f'Logistic Regression Cross Validation Recall scores are: {recall_score_lr}')
+    logging.info(f'Logistic Regression Average Cross Validation Recall score: {lr_recall_score}')
+    logging.info(f'Logistic Regression Cross Validation Recall standard deviation: {lr_recall_stdev}')
     lr_predicted = logistic_regression_clf.predict(X_test)
     lr_predicted_probs = logistic_regression_clf.predict_proba(X_test)[:, 1]
     lr_precision, lr_recall, lr_fscore, lr_support = score(y_test, lr_predicted)
@@ -408,7 +409,7 @@ def generate_model(current_version, previous_version, recalculate_models=True, p
         plt.plot([0, 1], [0, 1], color="gray", linestyle="--")
         plt.xlabel("False Positive Rate")
         plt.ylabel("True Positive Rate")
-        plt.title(f"Logistic Regression AUC Curve - version {dots_separated_version}")
+        plt.title(f"Logistic Regression AUC Curve - version {dots_separated_current_version}")
         plt.legend(loc="lower right")
         plt.grid()
         plt.savefig(version_output_dir / f"logistic_regression_auc_{current_version}.png")
@@ -438,7 +439,7 @@ def generate_model(current_version, previous_version, recalculate_models=True, p
     if plot_images:
         # Print nomogram for Logistic Regression
         nomogram_fig = nomogram(str(version_output_dir / f"nomogram_config_{current_version}.xlsx"),
-                                result_title="Bug risk", fig_width=50,
+                                result_title="Bug risk", fig_width=30,
                                 single_height=0.45,
                                 dpi=300,
                                 ax_para={"c": "black", "linewidth": 1.3, "linestyle": "-"},
@@ -453,21 +454,11 @@ def generate_model(current_version, previous_version, recalculate_models=True, p
     # Optimize the hyperparameters choice with a grid search
     param_grid = {
         "n_estimators": [100, 200, 300],
-        "max_depth": [2, 4, 8, 16],
-        "min_samples_split": [2, 4],
+        "max_depth": [2, 4, 8],
         "min_samples_leaf": [1, 2],
         "max_features": ["auto", "sqrt", "log2"],
         "random_state": [0],
     }
-    # BEST PARAMETERS
-    # param_grid = {
-    #     "n_estimators": [100],
-    #     "max_depth": [16],
-    #     "min_samples_split": [2],
-    #     "min_samples_leaf": [1],
-    #     "max_features": ["sqrt"],
-    #     "random_state": [0],
-    # }
     existing_model = True
     try:
         with open(version_output_dir / f"random_forest_model_{current_version}.pkl", "rb") as f:
@@ -486,12 +477,18 @@ def generate_model(current_version, previous_version, recalculate_models=True, p
 
     # Calculate 10-fold cross validation scores
     # Ref.: https://www.kaggle.com/code/marcinrutecki/gridsearchcv-kfold-cv-the-right-way
-    score_rf = cross_val_score(random_forest_clf, X_train, y_train, cv=kf, scoring='precision')
-    rf_score = score_rf.mean()
-    rf_stdev = stdev(score_rf)
-    logging.info(f'Randon Forest Cross Validation Precision scores are: {score_rf}')
-    logging.info(f'Randon Forest Average Cross Validation Precision score: {rf_score}')
-    logging.info(f'Randon Forest Cross Validation Precision standard deviation: {rf_stdev}')
+    precision_score_rf = cross_val_score(random_forest_clf, X_train, y_train, cv=kf, scoring='precision')
+    rf_precision_score = precision_score_rf.mean()
+    rf_precision_stdev = stdev(precision_score_rf)
+    logging.info(f'Random Forest Cross Validation Precision scores are: {precision_score_rf}')
+    logging.info(f'Random Forest Average Cross Validation Precision score: {rf_precision_score}')
+    logging.info(f'Random Forest Cross Validation Precision standard deviation: {rf_precision_stdev}')
+    recall_score_rf = cross_val_score(random_forest_clf, X_train, y_train, cv=kf, scoring='recall')
+    rf_recall_score = recall_score_rf.mean()
+    rf_recall_stdev = stdev(recall_score_rf)
+    logging.info(f'Random Forest Cross Validation Recall scores are: {recall_score_rf}')
+    logging.info(f'Random Forest Average Cross Validation Recall score: {rf_recall_score}')
+    logging.info(f'Random Forest Cross Validation Recall standard deviation: {rf_recall_stdev}')
     rf_predicted = random_forest_clf.predict(X_test)
     rf_predicted_probs = random_forest_clf.predict_proba(X_test)[:, 1]
     rf_precision, rf_recall, rf_fscore, rf_support = score(y_test, rf_predicted)
@@ -515,7 +512,7 @@ def generate_model(current_version, previous_version, recalculate_models=True, p
         plt.plot([0, 1], [0, 1], color="gray", linestyle="--")
         plt.xlabel("False Positive Rate")
         plt.ylabel("True Positive Rate")
-        plt.title(f"Random Forest AUC Curve - version {dots_separated_version}")
+        plt.title(f"Random Forest AUC Curve - version {dots_separated_current_version}")
         plt.legend(loc="lower right")
         plt.grid()
         plt.savefig(version_output_dir / f"random_forest_auc_{current_version}.png")
