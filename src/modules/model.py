@@ -316,10 +316,10 @@ def generate_model(current_version, previous_version, recalculate_models=True, p
     logging.info("")
 
     # Save preprocessed data to file
-    filtered_dataset.to_csv(version_output_dir / f"und_hive_metrics_preprocessed_{current_version}.csv", index=False)
+    # filtered_dataset.to_csv(version_output_dir / f"und_hive_metrics_preprocessed_{current_version}.csv", index=False)
 
     # Save outliers data to file
-    outliers.to_csv(version_output_dir / f"outliers_{current_version}.csv", index=False)
+    # outliers.to_csv(version_output_dir / f"outliers_{current_version}.csv", index=False)
 
     # Drop "Name" column
     filtered_dataset = filtered_dataset.drop("Name", axis=1)
