@@ -10,7 +10,7 @@ from sklearn.ensemble import RandomForestClassifier
 from sklearn.linear_model import LogisticRegression
 from sklearn.model_selection import GridSearchCV, KFold, cross_val_score, train_test_split
 from sklearn.metrics import precision_recall_fscore_support as score
-from sklearn.feature_selection import SelectKBest
+from sklearn.feature_selection import SelectKBest, mutual_info_classif
 from sklearn import metrics
 from collections import Counter
 import matplotlib.pyplot as plt
@@ -18,6 +18,7 @@ from pickle import dump, load
 from src.modules.custom_simple_nomo import nomogram
 import xlsxwriter
 from statistics import stdev
+import statsmodels.api as sm
 
 
 def generate_model(current_version, recalculate_models=True, plot_images=True):
@@ -409,10 +410,12 @@ def generate_model(current_version, recalculate_models=True, plot_images=True):
         plt.savefig(version_output_dir / f"logistic_regression_auc_{current_version}.png")
 
     # Determine the 10 most relevant metrics
-    lr_k_best_features = SelectKBest(logistic_regression_clf, k=10)
-    lr_best_features = [filtered_dataset.columns[i] for i in lr_k_best_features.get_support(indices=True)]
-    logging.info("Logistic regression 10 most relevant features")
-    for feature in lr_best_features:
+    k_best_features = SelectKBest(mutual_info_classif, k=10)
+    k_best_features.fit_transform(X_train, y_train)
+    features = filtered_dataset.columns[:-1]
+    best_features = [features[i] for i in k_best_features.get_support(indices=True)]
+    logging.info("10 most relevant features from SelectKBest with mutual_info_classif")
+    for feature in best_features:
         logging.info(f"    {feature}")
 
     # Generate nomogram configuration file using Logistic Regression coefficients and intercept
@@ -450,6 +453,26 @@ def generate_model(current_version, recalculate_models=True, plot_images=True):
                                              "loc": "center", "color": "black", "rotation": "horizontal"},
                                 total_point=100)
         nomogram_fig.savefig(version_output_dir / f"nomogram_{current_version}.png")
+
+    # Create a nomogram using statsmodels
+    logit_model = sm.Logit(y_train, sm.add_constant(X_train))
+    result = logit_model.fit()
+    # Print the summary of the logistic regression model
+    logging.info("Alternative nomogram summary")
+    logging.info(result.summary())
+    logging.info("")
+    # Generate the nomogram
+    fig, ax = plt.subplots(figsize=(25, 6))
+    # Plot the coefficients
+    coefficients = result.params[1:]
+    y_pos = np.arange(len(filtered_dataset.columns[:-1]))
+    ax.barh(y_pos, coefficients, align='center')
+    ax.set_yticks(y_pos)
+    ax.set_yticklabels(filtered_dataset.columns[:-1])  # remove the Bugs column
+    ax.invert_yaxis()
+    ax.set_xlabel('Coefficient Value')
+    ax.set_title('Nomogram for Logistic Regression Model')
+    plt.savefig(version_output_dir / f"alternative_nomogram_{current_version}.png")
 
     # Generate Random Forest classifier
     # Optimize the hyperparameters choice with a grid search
@@ -517,11 +540,4 @@ def generate_model(current_version, recalculate_models=True, plot_images=True):
         plt.legend(loc="lower right")
         plt.grid()
         plt.savefig(version_output_dir / f"random_forest_auc_{current_version}.png")
-
-    # Determine the 10 most relevant metrics
-    rf_k_best_features = SelectKBest(random_forest_clf, k=10)
-    rf_best_features = [filtered_dataset.columns[i] for i in rf_k_best_features.get_support(indices=True)]
-    logging.info("Random forest 10 most relevant features")
-    for feature in rf_best_features:
-        logging.info(f"    {feature}")
 
