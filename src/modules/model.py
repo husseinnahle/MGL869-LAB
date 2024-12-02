@@ -20,7 +20,7 @@ import xlsxwriter
 from statistics import stdev
 
 
-def generate_model(current_version, previous_version, recalculate_models=True, plot_images=True):
+def generate_model(current_version, recalculate_models=True, plot_images=True):
 
     dots_separated_current_version = ".".join(current_version.split("_"))
 
