@@ -224,80 +224,81 @@ Variables range:
     MaxNestingMean: 0.0 - 6.0
     MaxNestingMax: 0.0 - 11.0
 
-logistic_regression_clf best params: {'C': 1.0, 'class_weight': None, 'dual': False, 'fit_intercept': True, 'intercept_scaling': 1, 'l1_ratio': None, 'max_iter': 100, 'multi_class': 'deprecated', 'n_jobs': None, 'penalty': None, 'random_state': None, 'solver': 'newton-cg', 'tol': 0.0001, 'verbose': 0, 'warm_start': False}
-logistic_regression_clf coefficients: [-6.89987062e-03  9.73958253e-02 -1.27680298e-01 -3.12998825e-01
-  2.53982081e-02 -2.31666018e+00  6.84530170e-02  2.46693408e-02
- -3.65116271e-01  2.80333769e-03 -1.84847271e-03 -1.92288085e-01
- -8.12013807e-02  1.63439086e-03 -2.66331812e-01  1.80248987e-02
-  2.70363834e-02  2.00328131e-02 -2.39743748e-03 -2.26603992e+00
-  3.06590996e-01  3.76449118e-02]
-logistic_regression_clf intercept_: -4.400218184897711
-Logistic Regression Cross Validation Precision scores are: [0. 0. 0. 0. 0. 0. 0. 0. 0. 0.]
-Logistic Regression Average Cross Validation Precision score: 0.0
-Logistic Regression Cross Validation Precision standard deviation: 0.0
-Logistic Regression Cross Validation Recall scores are: [0. 0. 0. 0. 0. 0. 0. 0. 0. 0.]
-Logistic Regression Average Cross Validation Recall score: 0.0
-Logistic Regression Cross Validation Recall standard deviation: 0.0
+logistic_regression_clf best params: {'C': 1.0, 'class_weight': None, 'dual': False, 'fit_intercept': True, 'intercept_scaling': 1, 'l1_ratio': None, 'max_iter': 100, 'multi_class': 'deprecated', 'n_jobs': None, 'penalty': None, 'random_state': None, 'solver': 'lbfgs', 'tol': 0.0001, 'verbose': 0, 'warm_start': False}
+logistic_regression_clf coefficients: [-0.0347909   0.19178019 -0.42554965 -0.6540742   0.04428402 -0.21412631
+  0.00565188  0.04745015 -1.19924737 -0.0115249  -1.08403826 -0.2269628
+ -0.17221492  0.00405872  0.04043233  0.0100486  -0.25720563  0.01745209
+ -0.00206321  0.08518634  0.04373574 -0.00919817]
+logistic_regression_clf intercept_: -0.8786237197205079
+Logistic Regression Cross Validation Precision scores are: [0. 0. 1. 0. 0. 1. 1. 0. 0. 0.]
+Logistic Regression Average Cross Validation Precision score: 0.3
+Logistic Regression Cross Validation Precision standard deviation: 0.48304589153964794
+Logistic Regression Cross Validation Recall scores are: [0.         0.         0.16666667 0.         0.         0.16666667
+ 0.33333333 0.         0.         0.        ]
+Logistic Regression Average Cross Validation Recall score: 0.06666666666666667
+Logistic Regression Cross Validation Recall standard deviation: 0.11653431646335016
 Logistic Regression classifier performance:
-precision: [0.98935462 0.        ]
-recall: [0.99664879 0.        ]
-fscore: [0.99298831 0.        ]
-support: [1492   16]
+precision: [0.99069767 0.        ]
+recall: [0.99799197 0.        ]
+fscore: [0.99433144 0.        ]
+support: [1494   14]
 
-Logistic Regression AUC: 0.6066102546916889
+Logistic Regression classifier performance:
+precision: 0.0
+recall: 0.0
+fscore: 0.0
+support: None
+
+Logistic Regression AUC: 0.798097150506789
 
 10 most relevant features from SelectKBest with mutual_info_classif
-    AvgCountLine
     AvgCountLineComment
+    AvgEssential
     CountClassCoupled
+    CountClassDerived
     MaxCyclomatic
     MaxInheritanceTree
-    PercentLackOfCohesion
     CountInputMean
-    CountInputMax
     CountOutputMax
-    MaxNestingMean
+    CountPathMean-divided-by-100,000
+    MaxNestingMax
 Alternative nomogram summary
                            Logit Regression Results                           
 ==============================================================================
 Dep. Variable:                   Bugs   No. Observations:                 3516
 Model:                          Logit   Df Residuals:                     3493
 Method:                           MLE   Df Model:                           22
-Date:                Sun, 01 Dec 2024   Pseudo R-squ.:                  0.2289
-Time:                        21:39:09   Log-Likelihood:                -140.52
-converged:                      False   LL-Null:                       -182.23
-Covariance Type:            nonrobust   LLR p-value:                 4.380e-09
+Date:                Mon, 02 Dec 2024   Pseudo R-squ.:                  0.1830
+Time:                        22:22:03   Log-Likelihood:                -156.49
+converged:                       True   LL-Null:                       -191.55
+Covariance Type:            nonrobust   LLR p-value:                 6.331e-07
 =====================================================================================================
                                         coef    std err          z      P>|z|      [0.025      0.975]
 -----------------------------------------------------------------------------------------------------
-const                                -6.1621      1.337     -4.607      0.000      -8.783      -3.541
-AvgCountLine                         -0.0077      0.026     -0.293      0.769      -0.059       0.044
-AvgCountLineComment                   0.0861      0.079      1.094      0.274      -0.068       0.240
-AvgEssential                         -0.0926      0.274     -0.338      0.735      -0.629       0.444
-CountClassBase                       -0.4297      0.435     -0.987      0.324      -1.283       0.424
-CountClassCoupled                     0.0212      0.013      1.570      0.116      -0.005       0.048
-CountClassDerived                    -1.7486      1.596     -1.095      0.273      -4.877       1.380
-CountDeclClass                        0.0961      0.046      2.069      0.039       0.005       0.187
-MaxCyclomatic                         0.0233      0.016      1.411      0.158      -0.009       0.056
-MaxInheritanceTree                   -0.4170      0.365     -1.142      0.253      -1.132       0.298
-PercentLackOfCohesion                 0.0009      0.008      0.112      0.911      -0.014       0.016
-RatioCommentToCode                    0.3283      0.250      1.315      0.188      -0.161       0.817
-CountInputMin                        -0.1668      0.277     -0.603      0.547      -0.709       0.376
-CountInputMean                       -0.1279      0.126     -1.013      0.311      -0.375       0.120
-CountInputMax                         0.0065      0.006      1.003      0.316      -0.006       0.019
-CountOutputMin                       -0.4073      0.311     -1.311      0.190      -1.017       0.202
-CountOutputMax                        0.0242      0.010      2.342      0.019       0.004       0.045
-CountPathMin                          2.2153      0.905      2.447      0.014       0.441       3.990
-CountPathMean-divided-by-100,000      0.0195      0.010      1.869      0.062      -0.001       0.040
-CountPathMax-divided-by-1,000,000    -0.0028      0.003     -1.066      0.286      -0.008       0.002
-MaxNestingMin                      -259.3697    2.7e+04     -0.010      0.992   -5.31e+04    5.26e+04
-MaxNestingMean                        0.1743      0.616      0.283      0.777      -1.032       1.381
-MaxNestingMax                         0.0808      0.167      0.485      0.628      -0.246       0.407
+const                                -4.0892      0.913     -4.477      0.000      -5.880      -2.299
+AvgCountLine                         -0.0139      0.021     -0.665      0.506      -0.055       0.027
+AvgCountLineComment                   0.1180      0.071      1.657      0.097      -0.022       0.257
+AvgEssential                         -0.1284      0.261     -0.492      0.623      -0.640       0.383
+CountClassBase                        0.1210      0.378      0.320      0.749      -0.619       0.861
+CountClassCoupled                     0.0441      0.011      3.953      0.000       0.022       0.066
+CountClassDerived                    -0.2880      0.512     -0.562      0.574      -1.292       0.716
+CountDeclClass                        0.0069      0.010      0.694      0.488      -0.013       0.026
+MaxCyclomatic                         0.0369      0.017      2.137      0.033       0.003       0.071
+MaxInheritanceTree                   -0.8042      0.376     -2.140      0.032      -1.541      -0.068
+PercentLackOfCohesion                -0.0093      0.008     -1.215      0.224      -0.024       0.006
+RatioCommentToCode                   -0.1319      0.253     -0.521      0.602      -0.628       0.364
+CountInputMin                        -0.2330      0.213     -1.093      0.274      -0.651       0.185
+CountInputMean                       -0.0058      0.097     -0.060      0.953      -0.197       0.185
+CountInputMax                         0.0023      0.006      0.384      0.701      -0.009       0.014
+CountOutputMin                        0.0274      0.079      0.347      0.729      -0.127       0.182
+CountOutputMax                        0.0071      0.011      0.641      0.522      -0.015       0.029
+CountPathMin                         -0.1098      0.308     -0.356      0.722      -0.714       0.494
+CountPathMean-divided-by-100,000      0.0172      0.009      1.905      0.057      -0.000       0.035
+CountPathMax-divided-by-1,000,000    -0.0021      0.002     -0.864      0.388      -0.007       0.003
+MaxNestingMin                         0.8017      0.794      1.010      0.312      -0.754       2.357
+MaxNestingMean                       -0.5111      0.590     -0.866      0.387      -1.668       0.646
+MaxNestingMax                         0.1060      0.168      0.632      0.528      -0.223       0.435
 =====================================================================================================
-
-Possibly complete quasi-separation: A fraction 0.12 of observations can be
-perfectly predicted. This might indicate that there is complete
-quasi-separation. In this case some parameters will not be identified.
 
 random_forest_clf best params: {'bootstrap': True, 'ccp_alpha': 0.0, 'class_weight': None, 'criterion': 'gini', 'max_depth': 2, 'max_features': 'sqrt', 'max_leaf_nodes': None, 'max_samples': None, 'min_impurity_decrease': 0.0, 'min_samples_leaf': 1, 'min_samples_split': 2, 'min_weight_fraction_leaf': 0.0, 'monotonic_cst': None, 'n_estimators': 100, 'n_jobs': None, 'oob_score': False, 'random_state': 0, 'verbose': 0, 'warm_start': False}
 Random Forest Cross Validation Precision scores are: [0. 0. 0. 0. 0. 0. 0. 0. 0. 0.]
@@ -307,10 +308,16 @@ Random Forest Cross Validation Recall scores are: [0. 0. 0. 0. 0. 0. 0. 0. 0. 0.
 Random Forest Average Cross Validation Recall score: 0.0
 Random Forest Cross Validation Recall standard deviation: 0.0
 Random Forest classifier performance:
-precision: [0.98938992 0.        ]
+precision: [0.99071618 0.        ]
 recall: [1. 0.]
-fscore: [0.99466667 0.        ]
-support: [1492   16]
+fscore: [0.99533644 0.        ]
+support: [1494   14]
 
-Random Forest AUC: 0.7290130697050938
+Random Forest classifier performance:
+precision: 0.0
+recall: 0.0
+fscore: 0.0
+support: None
+
+Random Forest AUC: 0.7696978389749475
 

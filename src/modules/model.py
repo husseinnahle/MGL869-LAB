@@ -330,7 +330,7 @@ def generate_model(current_version, recalculate_models=True, plot_images=True):
     X = filtered_dataset.iloc[:, :-1]
     y = filtered_dataset.iloc[:, -1]
     X_train, X_test, y_train, y_test = train_test_split(
-        X, y, test_size=0.3, random_state=0
+        X, y, test_size=0.3, random_state=0, shuffle=True, stratify=y
     )
 
     # Add outliers to test sets
@@ -389,6 +389,13 @@ def generate_model(current_version, recalculate_models=True, plot_images=True):
     logging.info(f"recall: {lr_recall}")
     logging.info(f"fscore: {lr_fscore}")
     logging.info(f"support: {lr_support}")
+    logging.info("")
+    lr_precision_2, lr_recall_2, lr_fscore_2, lr_support_2 = score(y_test, lr_predicted, average="binary")
+    logging.info("Logistic Regression classifier performance:")
+    logging.info(f"precision: {lr_precision_2}")
+    logging.info(f"recall: {lr_recall_2}")
+    logging.info(f"fscore: {lr_fscore_2}")
+    logging.info(f"support: {lr_support_2}")
     logging.info("")
 
     # Calculate Logistic Regression AUC
@@ -521,6 +528,13 @@ def generate_model(current_version, recalculate_models=True, plot_images=True):
     logging.info(f"recall: {rf_recall}")
     logging.info(f"fscore: {rf_fscore}")
     logging.info(f"support: {rf_support}")
+    logging.info("")
+    rf_precision_2, rf_recall_2, rf_fscore_2, rf_support_2 = score(y_test, rf_predicted, average="binary")
+    logging.info("Random Forest classifier performance:")
+    logging.info(f"precision: {rf_precision_2}")
+    logging.info(f"recall: {rf_recall_2}")
+    logging.info(f"fscore: {rf_fscore_2}")
+    logging.info(f"support: {rf_support_2}")
     logging.info("")
 
     # Calculate Random Forest AUC

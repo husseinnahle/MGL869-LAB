@@ -253,34 +253,40 @@ Variables range:
     MaxNestingMin: 0.0 - 7.0
     MaxNestingMax: 0.0 - 11.0
 
-logistic_regression_clf best params: {'C': 1.0, 'class_weight': None, 'dual': False, 'fit_intercept': True, 'intercept_scaling': 1, 'l1_ratio': None, 'max_iter': 1000, 'multi_class': 'deprecated', 'n_jobs': None, 'penalty': None, 'random_state': None, 'solver': 'sag', 'tol': 0.0001, 'verbose': 0, 'warm_start': False}
-logistic_regression_clf coefficients: [-1.44528860e-02  9.91270268e-02 -1.14179188e-01 -1.38347485e-01
- -2.58103177e-01  1.39910068e-02 -7.00249566e-03  8.14936522e-05
-  3.89555898e-02 -2.46895054e-01 -9.46678213e-03 -3.12869443e-01
- -5.34505582e-02 -1.83576639e-04 -7.62385787e-02  1.72450092e-02
-  1.19791621e-01  3.12626663e-02  6.64822422e-03  1.83102234e-02
- -5.70797452e-02]
-logistic_regression_clf intercept_: -0.22348262367074306
-Logistic Regression Cross Validation Precision scores are: [0.77777778 0.81818182 0.91666667 0.66666667 0.53846154 0.875
- 0.28571429 0.83333333 0.55555556 0.5       ]
-Logistic Regression Average Cross Validation Precision score: 0.6767357642357641
-Logistic Regression Cross Validation Precision standard deviation: 0.2026639080649716
-Logistic Regression Cross Validation Recall scores are: [0.15217391 0.2        0.21153846 0.05263158 0.15909091 0.175
- 0.05128205 0.10869565 0.10869565 0.07843137]
-Logistic Regression Average Cross Validation Recall score: 0.12975395907991144
-Logistic Regression Cross Validation Recall standard deviation: 0.05836698133973575
+logistic_regression_clf best params: {'C': 1.0, 'class_weight': None, 'dual': False, 'fit_intercept': True, 'intercept_scaling': 1, 'l1_ratio': None, 'max_iter': 100, 'multi_class': 'deprecated', 'n_jobs': None, 'penalty': 'l2', 'random_state': None, 'solver': 'lbfgs', 'tol': 0.0001, 'verbose': 0, 'warm_start': False}
+logistic_regression_clf coefficients: [-2.33005877e-02  1.61431031e-01 -6.05712657e-02  6.59899807e-02
+ -8.29816701e-01  2.08708776e-02  4.02408403e-02  1.28782608e-03
+  8.63680174e-03  6.95245750e-02  7.64222548e-04 -1.26483643e+00
+ -7.30060587e-02  5.61057376e-04 -2.88152406e-03  1.85698817e-02
+  5.41986929e-01  3.09547674e-02 -5.01446145e-04  1.51287662e-01
+  1.72197153e-01]
+logistic_regression_clf intercept_: -1.1158340523898513
+Logistic Regression Cross Validation Precision scores are: [0.6        0.5        0.36363636 0.64285714 0.81818182 0.55555556
+ 1.         0.42857143 0.63636364 0.91666667]
+Logistic Regression Average Cross Validation Precision score: 0.6461832611832613
+Logistic Regression Cross Validation Precision standard deviation: 0.2073488816544635
+Logistic Regression Cross Validation Recall scores are: [0.13953488 0.1627907  0.0952381  0.25       0.20454545 0.22222222
+ 0.19354839 0.15384615 0.14285714 0.24444444]
+Logistic Regression Average Cross Validation Recall score: 0.18090274816456361
+Logistic Regression Cross Validation Recall standard deviation: 0.050327232284396534
 Logistic Regression classifier performance:
-precision: [0.86042945 0.52380952]
-recall: [0.99116608 0.05699482]
-fscore: [0.92118227 0.10280374]
-support: [1132  193]
+precision: [0.87091757 0.66666667]
+recall: [0.98852604 0.13541667]
+fscore: [0.92600248 0.22510823]
+support: [1133  192]
 
-Logistic Regression AUC: 0.6893640491404092
+Logistic Regression classifier performance:
+precision: 0.6666666666666666
+recall: 0.13541666666666666
+fscore: 0.22510822510822512
+support: None
+
+Logistic Regression AUC: 0.7635609738158282
 
 10 most relevant features from SelectKBest with mutual_info_classif
-    CountClassBase
+    AvgCountLineComment
+    AvgCyclomatic
     CountClassCoupled
-    CountDeclClass
     MaxCyclomatic
     MaxInheritanceTree
     PercentLackOfCohesion
@@ -294,51 +300,57 @@ Alternative nomogram summary
 Dep. Variable:                   Bugs   No. Observations:                 3090
 Model:                          Logit   Df Residuals:                     3068
 Method:                           MLE   Df Model:                           21
-Date:                Sun, 01 Dec 2024   Pseudo R-squ.:                  0.1903
-Time:                        21:00:16   Log-Likelihood:                -1034.1
-converged:                      False   LL-Null:                       -1277.2
-Covariance Type:            nonrobust   LLR p-value:                 1.137e-89
+Date:                Mon, 02 Dec 2024   Pseudo R-squ.:                  0.2036
+Time:                        22:52:37   Log-Likelihood:                -1018.6
+converged:                      False   LL-Null:                       -1279.0
+Covariance Type:            nonrobust   LLR p-value:                 6.933e-97
 =====================================================================================================
                                         coef    std err          z      P>|z|      [0.025      0.975]
 -----------------------------------------------------------------------------------------------------
-const                                -3.0521      0.281    -10.846      0.000      -3.604      -2.501
-AvgCountLine                         -0.0069      0.007     -0.930      0.352      -0.021       0.008
-AvgCountLineComment                   0.0965      0.029      3.309      0.001       0.039       0.154
-AvgCyclomatic                        -0.0981      0.061     -1.595      0.111      -0.219       0.022
-AvgEssential                          0.1257      0.081      1.551      0.121      -0.033       0.285
-CountClassBase                       -0.1610      0.129     -1.250      0.211      -0.413       0.091
-CountClassCoupled                     0.0315      0.006      5.271      0.000       0.020       0.043
-CountClassDerived                     0.0668      0.037      1.793      0.073      -0.006       0.140
-CountDeclClass                        0.0024      0.004      0.536      0.592      -0.006       0.011
-MaxCyclomatic                         0.0138      0.009      1.588      0.112      -0.003       0.031
-MaxInheritanceTree                    0.2366      0.073      3.230      0.001       0.093       0.380
-PercentLackOfCohesion                 0.0011      0.002      0.496      0.620      -0.003       0.005
-RatioCommentToCode                   -0.4944      0.114     -4.335      0.000      -0.718      -0.271
-CountInputMin                        -0.0717      0.047     -1.526      0.127      -0.164       0.020
-CountInputMax                         0.0034      0.002      1.352      0.176      -0.002       0.008
-CountOutputMin                       -0.0104      0.026     -0.397      0.691      -0.062       0.041
-CountOutputMax                        0.0165      0.004      4.273      0.000       0.009       0.024
-CountPathMin-divided-by-10,000        5.9261    1.6e+04      0.000      1.000   -3.14e+04    3.14e+04
-CountPathMean-divided-by-100,000      0.0750      0.100      0.750      0.454      -0.121       0.271
-CountPathMax-divided-by-1,000,000     0.0032      0.005      0.607      0.544      -0.007       0.013
-MaxNestingMin                        -0.0058      0.186     -0.031      0.975      -0.370       0.358
-MaxNestingMax                         0.1855      0.044      4.230      0.000       0.100       0.271
+const                                -3.1103      0.297    -10.489      0.000      -3.692      -2.529
+AvgCountLine                         -0.0080      0.008     -1.031      0.303      -0.023       0.007
+AvgCountLineComment                   0.1066      0.030      3.556      0.000       0.048       0.165
+AvgCyclomatic                        -0.1083      0.063     -1.710      0.087      -0.233       0.016
+AvgEssential                          0.1861      0.084      2.211      0.027       0.021       0.351
+CountClassBase                       -0.1187      0.131     -0.904      0.366      -0.376       0.139
+CountClassCoupled                     0.0300      0.006      5.292      0.000       0.019       0.041
+CountClassDerived                     0.0513      0.034      1.513      0.130      -0.015       0.118
+CountDeclClass                        0.0014      0.003      0.519      0.604      -0.004       0.007
+MaxCyclomatic                         0.0191      0.009      2.014      0.044       0.001       0.038
+MaxInheritanceTree                    0.2525      0.079      3.188      0.001       0.097       0.408
+PercentLackOfCohesion                 0.0029      0.002      1.300      0.194      -0.001       0.007
+RatioCommentToCode                   -0.6979      0.146     -4.790      0.000      -0.983      -0.412
+CountInputMin                        -0.0604      0.051     -1.192      0.233      -0.160       0.039
+CountInputMax                         0.0018      0.002      0.761      0.447      -0.003       0.006
+CountOutputMin                       -0.0045      0.029     -0.154      0.877      -0.062       0.053
+CountOutputMax                        0.0173      0.004      4.421      0.000       0.010       0.025
+CountPathMin-divided-by-10,000        3.9063    264.751      0.015      0.988    -514.995     522.808
+CountPathMean-divided-by-100,000      0.0213      0.046      0.460      0.645      -0.070       0.112
+CountPathMax-divided-by-1,000,000    -0.0010      0.002     -0.670      0.503      -0.004       0.002
+MaxNestingMin                        -0.0966      0.203     -0.475      0.635      -0.495       0.302
+MaxNestingMax                         0.1674      0.046      3.668      0.000       0.078       0.257
 =====================================================================================================
 
-random_forest_clf best params: {'bootstrap': True, 'ccp_alpha': 0.0, 'class_weight': None, 'criterion': 'gini', 'max_depth': 4, 'max_features': 'sqrt', 'max_leaf_nodes': None, 'max_samples': None, 'min_impurity_decrease': 0.0, 'min_samples_leaf': 2, 'min_samples_split': 2, 'min_weight_fraction_leaf': 0.0, 'monotonic_cst': None, 'n_estimators': 100, 'n_jobs': None, 'oob_score': False, 'random_state': 0, 'verbose': 0, 'warm_start': False}
-Random Forest Cross Validation Precision scores are: [0.81818182 0.77777778 1.         0.44444444 0.71428571 1.
- 0.71428571 1.         0.875      1.        ]
-Random Forest Average Cross Validation Precision score: 0.8343975468975469
-Random Forest Cross Validation Precision standard deviation: 0.18127055407889958
-Random Forest Cross Validation Recall scores are: [0.19565217 0.15555556 0.23076923 0.10526316 0.11363636 0.175
- 0.12820513 0.15217391 0.15217391 0.05882353]
-Random Forest Average Cross Validation Recall score: 0.14672529654727798
-Random Forest Cross Validation Recall standard deviation: 0.04862296337351504
+random_forest_clf best params: {'bootstrap': True, 'ccp_alpha': 0.0, 'class_weight': None, 'criterion': 'gini', 'max_depth': 8, 'max_features': 'sqrt', 'max_leaf_nodes': None, 'max_samples': None, 'min_impurity_decrease': 0.0, 'min_samples_leaf': 1, 'min_samples_split': 2, 'min_weight_fraction_leaf': 0.0, 'monotonic_cst': None, 'n_estimators': 200, 'n_jobs': None, 'oob_score': False, 'random_state': 0, 'verbose': 0, 'warm_start': False}
+Random Forest Cross Validation Precision scores are: [0.85714286 0.81818182 0.53333333 0.6        1.         0.77777778
+ 1.         0.75       0.8        0.8       ]
+Random Forest Average Cross Validation Precision score: 0.7936435786435786
+Random Forest Cross Validation Precision standard deviation: 0.1480603412958705
+Random Forest Cross Validation Recall scores are: [0.13953488 0.20930233 0.19047619 0.25       0.27272727 0.31111111
+ 0.17741935 0.23076923 0.24489796 0.26666667]
+Random Forest Average Cross Validation Recall score: 0.229290499507518
+Random Forest Cross Validation Recall standard deviation: 0.050887425180748715
 Random Forest classifier performance:
-precision: [0.86615385 0.76      ]
-recall: [0.99469965 0.0984456 ]
-fscore: [0.92598684 0.17431193]
-support: [1132  193]
+precision: [0.88188976 0.76363636]
+recall: [0.98852604 0.21875   ]
+fscore: [0.93216812 0.34008097]
+support: [1133  192]
 
-Random Forest AUC: 0.8212366575733718
+Random Forest classifier performance:
+precision: 0.7636363636363637
+recall: 0.21875
+fscore: 0.340080971659919
+support: None
+
+Random Forest AUC: 0.8100176522506619
 
