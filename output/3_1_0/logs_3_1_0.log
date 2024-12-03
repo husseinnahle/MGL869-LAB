@@ -301,15 +301,15 @@ support: None
 Logistic Regression AUC: 0.787217468567047
 
 10 most relevant features from SelectKBest with mutual_info_classif
+    AvgCountLine
+    CountClassBase
     CountClassCoupled
-    CountClassDerived
     CountDeclClass
-    MaxInheritanceTree
     PercentLackOfCohesion
+    RatioCommentToCode
     CountInputMean
     CountInputMax
     CountOutputMax
-    CountPathMax-divided-by-1,000,000
     MaxNestingMax
 Alternative nomogram summary
                            Logit Regression Results                           
@@ -317,8 +317,8 @@ Alternative nomogram summary
 Dep. Variable:                   Bugs   No. Observations:                 4176
 Model:                          Logit   Df Residuals:                     4155
 Method:                           MLE   Df Model:                           20
-Date:                Mon, 02 Dec 2024   Pseudo R-squ.:                  0.1440
-Time:                        22:37:37   Log-Likelihood:                -754.83
+Date:                Tue, 03 Dec 2024   Pseudo R-squ.:                  0.1440
+Time:                        09:28:44   Log-Likelihood:                -754.83
 converged:                       True   LL-Null:                       -881.78
 Covariance Type:            nonrobust   LLR p-value:                 1.877e-42
 ======================================================================================================
@@ -369,4 +369,18 @@ fscore: 0.1523809523809524
 support: None
 
 Random Forest AUC: 0.831412261590331
+
+Logistic Regression classifier performance:
+Logistic Regression Average Cross Validation Precision score: 45.0
+Logistic Regression Average Cross Validation Recall score: 3.7
+Logistic Regression AUC: 78.7
+precision: 16.7
+recall: 1.0
+
+Random Forest classifier performance:
+Random Forest Average Cross Validation Precision score: 53.3
+Random Forest Average Cross Validation Recall score: 4.1
+Random Forest AUC: 83.1
+precision: 100.0
+recall: 8.2
 

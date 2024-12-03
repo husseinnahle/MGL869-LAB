@@ -295,7 +295,7 @@ Logistic Regression AUC: 0.7047640319529116
 10 most relevant features from SelectKBest with mutual_info_classif
     CountClassBase
     CountClassCoupled
-    CountClassDerived
+    CountDeclClass
     MaxCyclomatic
     MaxInheritanceTree
     RatioCommentToCode
@@ -309,8 +309,8 @@ Alternative nomogram summary
 Dep. Variable:                   Bugs   No. Observations:                 3457
 Model:                          Logit   Df Residuals:                     3435
 Method:                           MLE   Df Model:                           21
-Date:                Mon, 02 Dec 2024   Pseudo R-squ.:                  0.1321
-Time:                        23:20:52   Log-Likelihood:                -948.95
+Date:                Tue, 03 Dec 2024   Pseudo R-squ.:                  0.1321
+Time:                        09:25:21   Log-Likelihood:                -948.95
 converged:                      False   LL-Null:                       -1093.4
 Covariance Type:            nonrobust   LLR p-value:                 5.702e-49
 =====================================================================================================
@@ -362,4 +362,18 @@ fscore: 0.15384615384615385
 support: None
 
 Random Forest AUC: 0.8187460584401934
+
+Logistic Regression classifier performance:
+Logistic Regression Average Cross Validation Precision score: 51.4
+Logistic Regression Average Cross Validation Recall score: 5.3
+Logistic Regression AUC: 70.5
+precision: 35.3
+recall: 4.2
+
+Random Forest classifier performance:
+Random Forest Average Cross Validation Precision score: 72.2
+Random Forest Average Cross Validation Recall score: 9.2
+Random Forest AUC: 81.9
+precision: 85.7
+recall: 8.5
 

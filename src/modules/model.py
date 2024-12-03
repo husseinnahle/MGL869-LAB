@@ -398,6 +398,7 @@ def generate_model(current_version, recalculate_models=True, plot_images=True):
     logging.info(f"support: {lr_support_2}")
     logging.info("")
 
+
     # Calculate Logistic Regression AUC
     lr_fpr, lr_tpr, lr_thresholds = metrics.roc_curve(y_test, lr_predicted_probs, pos_label=1)
     lr_auc = metrics.auc(lr_fpr, lr_tpr)
@@ -555,3 +556,18 @@ def generate_model(current_version, recalculate_models=True, plot_images=True):
         plt.grid()
         plt.savefig(version_output_dir / f"random_forest_auc_{current_version}.png")
 
+    logging.info("Logistic Regression classifier performance:")
+    logging.info(f'Logistic Regression Average Cross Validation Precision score: {round(lr_precision_score * 100, 1)}')
+    logging.info(f'Logistic Regression Average Cross Validation Recall score: {round(lr_recall_score * 100, 1)}')
+    logging.info(f"Logistic Regression AUC: {round(lr_auc * 100, 1)}")
+    logging.info(f"precision: {round(lr_precision_2 * 100, 1)}")
+    logging.info(f"recall: {round(lr_recall_2 * 100, 1)}")
+    logging.info("")
+
+    logging.info("Random Forest classifier performance:")
+    logging.info(f'Random Forest Average Cross Validation Precision score: {round(rf_precision_score * 100, 1)}')
+    logging.info(f'Random Forest Average Cross Validation Recall score: {round(rf_recall_score* 100, 1)}')
+    logging.info(f"Random Forest AUC: {round(rf_auc * 100, 1)}")
+    logging.info(f"precision: {round(rf_precision_2 * 100, 1)}")
+    logging.info(f"recall: {round(rf_recall_2 * 100, 1)}")
+    logging.info("")
