@@ -1,0 +1,5 @@
+create -languages Java import settings.xml hive_2_0_0.und
+add hive hive_2_0_0.und
+settings -metricsOutputFile hive_2_0_0.csv
+analyze hive_2_0_0.und
+metrics hive_2_0_0.und
